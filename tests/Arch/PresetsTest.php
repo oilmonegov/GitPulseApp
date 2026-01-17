@@ -14,4 +14,5 @@ arch()->preset()->security()
     ->ignoring('md5'); // md5 is used legitimately for Gravatar hashing
 
 arch()->preset()->laravel()
-    ->ignoring(\App\Http\Controllers\Auth\GitHubController::class); // OAuth controller has custom methods
+    ->ignoring(\App\Http\Controllers\Auth\GitHubController::class) // OAuth controller has custom methods
+    ->ignoring('App\Constants'); // Project uses Constants folder for enums (not Enums folder)

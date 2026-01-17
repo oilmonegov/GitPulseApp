@@ -167,3 +167,33 @@ arch('actions have action suffix')
 arch('queries have query suffix')
     ->expect('App\Queries')
     ->toHaveSuffix('Query');
+
+// Integrations: Connectors should extend Saloon Connector
+arch('connectors extend saloon connector')
+    ->expect('App\Integrations\GitHub\GitHubConnector')
+    ->toExtend(\Saloon\Http\Connector::class);
+
+// Integrations: Connectors should be final
+arch('connectors are final')
+    ->expect('App\Integrations\GitHub\GitHubConnector')
+    ->toBeFinal();
+
+// Integrations: Connectors should have Connector suffix
+arch('connectors have connector suffix')
+    ->expect('App\Integrations\GitHub\GitHubConnector')
+    ->toHaveSuffix('Connector');
+
+// Integrations: Requests should extend Saloon Request
+arch('integration requests extend saloon request')
+    ->expect('App\Integrations\GitHub\Requests')
+    ->toExtend(\Saloon\Http\Request::class);
+
+// Integrations: Requests should be final
+arch('integration requests are final')
+    ->expect('App\Integrations\GitHub\Requests')
+    ->toBeFinal();
+
+// Integrations: Requests should have Request suffix
+arch('integration requests have request suffix')
+    ->expect('App\Integrations\GitHub\Requests')
+    ->toHaveSuffix('Request');

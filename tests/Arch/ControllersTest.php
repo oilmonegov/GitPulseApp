@@ -30,3 +30,27 @@ arch('controllers should not be used outside Http layer')
 arch('controllers should not use Eloquent Builder directly')
     ->expect('App\Http\Controllers')
     ->not->toUse(\Illuminate\Database\Eloquent\Builder::class);
+
+arch('controllers should only have resource or invocable methods')
+    ->expect('App\Http\Controllers')
+    ->not->toHavePublicMethodsBesides([
+        // Invokable controller method
+        '__invoke',
+        // Resource controller methods
+        'index',
+        'show',
+        'create',
+        'store',
+        'edit',
+        'update',
+        'destroy',
+        // Constructor
+        '__construct',
+        // Auth controller specific methods (redirect, callback, disconnect patterns)
+        'redirect',
+        'callback',
+        'disconnect',
+        // Laravel middleware interface method
+        'middleware',
+    ])
+    ->ignoring(\App\Http\Controllers\Controller::class);

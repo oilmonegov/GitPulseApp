@@ -64,10 +64,8 @@ class ProcessGitHubWebhookJob extends ProcessWebhookJob
             'commit_count' => count($commits),
         ]);
 
-        // TODO: In future sprints, dispatch jobs to:
-        // - Store commits in database
-        // - Calculate productivity metrics
-        // - Update user statistics
+        // Dispatch job to process the push event and store commits
+        ProcessGitHubPushJob::dispatch($payload);
     }
 
     /**

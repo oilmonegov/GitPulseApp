@@ -1,9 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Seeders;
 
 use App\Models\User;
-// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -13,11 +14,17 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
-
-        User::factory()->create([
+        // Create the test user with GitHub connected
+        User::factory()->withGitHub()->create([
             'name' => 'Test User',
             'email' => 'test@example.com',
+            'github_username' => 'testuser',
+        ]);
+
+        // Seed repositories and commits
+        $this->call([
+            RepositorySeeder::class,
+            CommitSeeder::class,
         ]);
     }
 }

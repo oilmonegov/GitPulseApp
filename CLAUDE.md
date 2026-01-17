@@ -80,6 +80,20 @@ Before implementing any significant feature, follow this strict package selectio
 ## Documentation Files
 - You must only create documentation files if explicitly requested by the user.
 
+## Lessons Learned
+Before making architectural decisions, check `docs/lessons/LESSONS.md` for past decisions and their reasoning. This document captures:
+- What went wrong in previous sprints (mistakes to avoid)
+- What went well (patterns to follow)
+- Why we chose specific directions (reasoning behind decisions)
+
+**When to check lessons:**
+- Before choosing between implementation approaches
+- Before creating migrations (e.g., column types)
+- Before adding new packages or patterns
+- When facing a decision that feels like it could go multiple ways
+
+**Update lessons after completing work** to capture new learnings for future reference.
+
 === boost rules ===
 
 ## Laravel Boost
