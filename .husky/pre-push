@@ -12,6 +12,15 @@ for branch in "${protected_branches[@]}"; do
     fi
 done
 
+# Run static analysis
+echo "Running static analysis..."
+./vendor/bin/phpstan analyse --memory-limit=512M
+
+if [ $? -ne 0 ]; then
+    echo "Error: Static analysis failed. Push aborted."
+    exit 1
+fi
+
 # Run tests before push
 echo "Running tests before push..."
 php artisan test --compact
