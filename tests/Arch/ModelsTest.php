@@ -22,9 +22,11 @@ arch('models should not have suffix')
 arch('models should only be used in allowed locations')
     ->expect('App\Models')
     ->toOnlyBeUsedIn([
+        'App\Models',
         'App\Http\Controllers',
         'App\Http\Requests',
         'App\Actions',
+        'App\Queries',
         'App\Providers',
         'App\Policies',
         'App\Observers',
@@ -38,6 +40,7 @@ arch('models should only be used in allowed locations')
         'App\Services',
         'App\Repositories',
         'App\Concerns',
+        'App\Webhooks',
         'Database\Factories',
         'Database\Seeders',
     ]);

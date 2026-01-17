@@ -6,6 +6,7 @@ namespace App\Models;
 
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
@@ -77,6 +78,26 @@ class User extends Authenticatable
     public function hasGitHubConnected(): bool
     {
         return ! is_null($this->github_id);
+    }
+
+    /**
+     * Get the repositories for the user.
+     *
+     * @return HasMany<Repository, $this>
+     */
+    public function repositories(): HasMany
+    {
+        return $this->hasMany(Repository::class);
+    }
+
+    /**
+     * Get the commits for the user.
+     *
+     * @return HasMany<Commit, $this>
+     */
+    public function commits(): HasMany
+    {
+        return $this->hasMany(Commit::class);
     }
 
     /**
