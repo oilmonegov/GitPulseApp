@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
 |--------------------------------------------------------------------------
 | Test Case
@@ -13,7 +15,20 @@
 
 pest()->extend(Tests\TestCase::class)
     ->use(Illuminate\Foundation\Testing\RefreshDatabase::class)
-    ->in('Feature');
+    ->in('Feature', 'Browser');
+
+/*
+|--------------------------------------------------------------------------
+| Browser Testing Configuration
+|--------------------------------------------------------------------------
+|
+| Configure browser testing defaults for Pest. Browser tests use Playwright
+| under the hood and support Chrome, Firefox, and Safari.
+|
+*/
+
+pest()->browser()
+    ->timeout(10000);
 
 /*
 |--------------------------------------------------------------------------
@@ -26,9 +41,7 @@ pest()->extend(Tests\TestCase::class)
 |
 */
 
-expect()->extend('toBeOne', function () {
-    return $this->toBe(1);
-});
+expect()->extend('toBeOne', fn () => $this->toBe(1));
 
 /*
 |--------------------------------------------------------------------------
@@ -40,8 +53,3 @@ expect()->extend('toBeOne', function () {
 | global functions to help you to reduce the number of lines of code in your test files.
 |
 */
-
-function something()
-{
-    // ..
-}

@@ -1,0 +1,24 @@
+#!/bin/sh
+
+# Prevent direct pushes to main/master branch
+current_branch=$(git symbolic-ref HEAD 2>/dev/null | sed -e 's,.*/\(.*\),\1,')
+protected_branches=("main" "master" "production")
+
+for branch in "${protected_branches[@]}"; do
+    if [ "$current_branch" = "$branch" ]; then
+        echo "Error: Direct pushes to '$branch' branch are not allowed."
+        echo "Please create a feature branch and submit a pull request."
+        exit 1
+    fi
+done
+
+# Run tests before push
+echo "Running tests before push..."
+php artisan test --compact
+
+if [ $? -ne 0 ]; then
+    echo "Error: Tests failed. Push aborted."
+    exit 1
+fi
+
+echo "Pre-push checks passed!"

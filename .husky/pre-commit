@@ -1,0 +1,64 @@
+#!/bin/sh
+
+# Critical files that should be in separate commits
+CRITICAL_FILES=(
+    "tests/Architecture"
+    "phpstan.neon"
+    "rector.php"
+    "composer.json"
+    "package.json"
+    ".env.example"
+    "config/app.php"
+    "bootstrap/app.php"
+)
+
+# Get list of staged files
+staged_files=$(git diff --cached --name-only)
+
+# Check if critical files are being committed with other files
+critical_count=0
+other_count=0
+
+for file in $staged_files; do
+    is_critical=false
+    for critical in "${CRITICAL_FILES[@]}"; do
+        if echo "$file" | grep -q "$critical"; then
+            is_critical=true
+            critical_count=$((critical_count + 1))
+            break
+        fi
+    done
+    if [ "$is_critical" = false ]; then
+        other_count=$((other_count + 1))
+    fi
+done
+
+# If both critical and other files are staged, warn the user
+if [ $critical_count -gt 0 ] && [ $other_count -gt 0 ]; then
+    echo "Warning: You are committing critical configuration/architecture files with other changes."
+    echo ""
+    echo "Critical files detected:"
+    for file in $staged_files; do
+        for critical in "${CRITICAL_FILES[@]}"; do
+            if echo "$file" | grep -q "$critical"; then
+                echo "  - $file"
+            fi
+        done
+    done
+    echo ""
+    echo "Consider committing critical files separately for better traceability."
+    echo "To proceed anyway, use: git commit --no-verify"
+    echo ""
+    # This is a warning, not a blocker - remove 'exit 1' if you want to allow it
+    # exit 1
+fi
+
+# Run lint-staged for code formatting
+npx lint-staged
+
+if [ $? -ne 0 ]; then
+    echo "Error: Lint-staged failed. Please fix the issues and try again."
+    exit 1
+fi
+
+echo "Pre-commit checks passed!"

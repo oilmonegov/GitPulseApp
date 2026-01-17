@@ -1,4 +1,7 @@
-import { defineConfigWithVueTs, vueTsConfigs } from '@vue/eslint-config-typescript';
+import {
+    defineConfigWithVueTs,
+    vueTsConfigs,
+} from '@vue/eslint-config-typescript';
 import prettier from 'eslint-config-prettier';
 import importPlugin from 'eslint-plugin-import';
 import vue from 'eslint-plugin-vue';
@@ -7,7 +10,16 @@ export default defineConfigWithVueTs(
     vue.configs['flat/essential'],
     vueTsConfigs.recommended,
     {
-        ignores: ['vendor', 'node_modules', 'public', 'bootstrap/ssr', 'tailwind.config.js', 'resources/js/components/ui/*'],
+        ignores: [
+            'vendor',
+            'node_modules',
+            'public',
+            'bootstrap/ssr',
+            'tailwind.config.js',
+            'resources/js/components/ui/*',
+            'resources/js/actions/**/*', // Wayfinder generated
+            'resources/js/routes/**/*', // Wayfinder generated
+        ],
     },
     {
         plugins: {
@@ -27,7 +39,14 @@ export default defineConfigWithVueTs(
             'import/order': [
                 'error',
                 {
-                    groups: ['builtin', 'external', 'internal', 'parent', 'sibling', 'index'],
+                    groups: [
+                        'builtin',
+                        'external',
+                        'internal',
+                        'parent',
+                        'sibling',
+                        'index',
+                    ],
                     'newlines-between': 'always',
                     alphabetize: {
                         order: 'asc',

@@ -1,0 +1,40 @@
+#!/bin/sh
+
+# Validate commit message format (conventional commits)
+commit_msg_file=$1
+commit_msg=$(cat "$commit_msg_file")
+
+# Pattern for conventional commits: type(scope): description
+pattern="^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-zA-Z0-9_-]+\))?: .{1,100}$"
+
+# Allow merge commits
+if echo "$commit_msg" | grep -qE "^Merge "; then
+    exit 0
+fi
+
+# Allow revert commits
+if echo "$commit_msg" | grep -qE "^Revert "; then
+    exit 0
+fi
+
+# Check first line against pattern
+first_line=$(echo "$commit_msg" | head -n1)
+
+if ! echo "$first_line" | grep -qE "$pattern"; then
+    echo "Error: Invalid commit message format."
+    echo ""
+    echo "Commit message must follow Conventional Commits format:"
+    echo "  type(scope): description"
+    echo ""
+    echo "Valid types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert"
+    echo ""
+    echo "Examples:"
+    echo "  feat(auth): add GitHub OAuth login"
+    echo "  fix(dashboard): resolve metric calculation bug"
+    echo "  docs: update README with setup instructions"
+    echo ""
+    echo "Your message: $first_line"
+    exit 1
+fi
+
+echo "Commit message format is valid."

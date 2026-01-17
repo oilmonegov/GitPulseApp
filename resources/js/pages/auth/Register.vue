@@ -2,6 +2,7 @@
 import { Form, Head } from '@inertiajs/vue3';
 
 import InputError from '@/components/InputError.vue';
+import SocialAuthButton from '@/components/SocialAuthButton.vue';
 import TextLink from '@/components/TextLink.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import AuthBase from '@/layouts/AuthLayout.vue';
 import { login } from '@/routes';
+import { redirect as githubRedirect } from '@/routes/auth/github';
 import { store } from '@/routes/register';
 </script>
 
@@ -18,6 +20,21 @@ import { store } from '@/routes/register';
         description="Enter your details below to create your account"
     >
         <Head title="Register" />
+
+        <div class="flex flex-col gap-6">
+            <SocialAuthButton :href="githubRedirect.url()" provider="github" />
+
+            <div class="relative">
+                <div class="absolute inset-0 flex items-center">
+                    <span class="w-full border-t" />
+                </div>
+                <div class="relative flex justify-center text-xs uppercase">
+                    <span class="bg-background px-2 text-muted-foreground">
+                        Or continue with email
+                    </span>
+                </div>
+            </div>
+        </div>
 
         <Form
             v-bind="store.form()"

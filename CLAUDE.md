@@ -25,6 +25,45 @@ This application is a Laravel application and its main Laravel ecosystems packag
 - Use descriptive names for variables and methods. For example, `isRegisteredForDiscounts`, not `discount()`.
 - Check for existing components to reuse before writing a new one.
 
+## Package Selection Hierarchy (Critical)
+Before implementing any significant feature, follow this strict package selection hierarchy to keep the project simple, maintainable, and leverage battle-tested solutions:
+
+1. **Laravel MCP Tools First**: Use the Laravel Boost MCP tools (`search-docs`, `tinker`, `database-query`, etc.) to research and debug before writing code.
+
+2. **Laravel First-Party Packages**: Check if Laravel offers a first-party solution:
+   - Authentication: Fortify, Sanctum, Passport, Socialite
+   - Queues/Jobs: Horizon
+   - Real-time: Reverb, Echo
+   - Search: Scout
+   - Payments: Cashier
+   - Feature Flags: Pennant
+   - Storage: Filesystem with S3/local drivers
+   - Mail: Built-in Mail with various drivers
+   - Notifications: Built-in notification system
+   - PDF: Use `barryvdh/laravel-dompdf` (Laravel-endorsed)
+
+3. **Spatie Packages**: If Laravel doesn't have a first-party solution, check Spatie packages:
+   - Permissions: `spatie/laravel-permission`
+   - Media: `spatie/laravel-medialibrary`
+   - Activity Log: `spatie/laravel-activitylog`
+   - Settings: `spatie/laravel-settings`
+   - Data Transfer: `spatie/laravel-data`
+   - Query Builder: `spatie/laravel-query-builder`
+   - Webhooks: `spatie/laravel-webhook-client`, `spatie/laravel-webhook-server`
+   - Backup: `spatie/laravel-backup`
+   - Health: `spatie/laravel-health`
+   - Tags: `spatie/laravel-tags`
+   - Slugs: `spatie/laravel-sluggable`
+   - Translatable: `spatie/laravel-translatable`
+   - Visit the Spatie package list: https://spatie.be/open-source/packages
+
+4. **Custom Implementation**: Only implement custom solutions when:
+   - No suitable package exists
+   - The package would be overkill for a simple requirement
+   - The user explicitly requests a custom implementation
+
+**Always use `search-docs` to check Laravel ecosystem documentation before implementing features.**
+
 ## Verification Scripts
 - Do not create verification scripts or tinker when tests cover that functionality and prove it works. Unit and feature tests are more important.
 
@@ -165,6 +204,43 @@ Route::get('/users', function () {
 - Avoid `DB::`; prefer `Model::query()`. Generate code that leverages Laravel's ORM capabilities rather than bypassing them.
 - Generate code that prevents N+1 query problems by using eager loading.
 - Use Laravel's query builder for very complex database operations.
+
+### Database Compatibility (SQLite & MySQL)
+This application uses SQLite for development/testing and MySQL for production. All database code must work on both:
+
+- **Never use `enum()` column type in migrations** - Use `string()` with a sensible length instead:
+  - Status fields: `string('status', 20)` (e.g., 'pending', 'active', 'completed')
+  - Short codes: `string('code', 10)`
+  - Identifiers: `string('type', 50)`
+  - General text that fits a category: `string('category', 100)`
+
+- **Use the `DatabaseCompatible` trait** for queries requiring database-specific functions:
+  - Date extraction: `yearFromDate()`, `monthFromDate()`, `dayFromDate()`
+  - Date formatting: `dateFormat()`
+  - Current timestamp: `currentTimestamp()`, `currentDate()`
+  - String operations: `concat()`, `groupConcat()`, `coalesce()`
+  - Date math: `dateDiffDays()`, `dateAddDays()`
+
+- **Avoid raw SQL with database-specific functions** like `YEAR()`, `MONTH()`, `NOW()`, `DATE_FORMAT()`, `GROUP_CONCAT()` - these differ between MySQL and SQLite.
+
+- **Use Laravel's query builder** which handles most cross-database compatibility automatically.
+
+<code-snippet name="Using DatabaseCompatible Trait" lang="php">
+use App\Concerns\DatabaseCompatible;
+
+class MyQuery implements Query
+{
+    use DatabaseCompatible;
+
+    public function get(): Collection
+    {
+        return Model::query()
+            ->selectRaw($this->yearFromDate('created_at') . ' as year')
+            ->groupByRaw($this->yearFromDate('created_at'))
+            ->get();
+    }
+}
+</code-snippet>
 
 ### Model Creation
 - When creating new models, create useful factories and seeders for them too. Ask the user if they need any other things, using `list-artisan-commands` to check the available options to `php artisan make:model`.
@@ -378,6 +454,101 @@ $pages = visit(['/', '/about', '/contact']);
 $pages->assertNoJavascriptErrors()->assertNoConsoleLogs();
 </code-snippet>
 
+=== webhooks rules ===
+
+## Webhooks (Spatie Packages Required)
+
+**Always use Spatie webhook packages for webhook implementations:**
+
+- **Receiving webhooks**: Use `spatie/laravel-webhook-client`
+- **Sending webhooks**: Use `spatie/laravel-webhook-server`
+
+### Receiving Webhooks (webhook-client)
+
+When implementing webhook receivers:
+
+1. Create a custom `SignatureValidator` for the provider's signature format
+2. Create a `WebhookProfile` to filter which events to process
+3. Create a job extending `ProcessWebhookJob` to handle the events
+4. Configure in `config/webhook-client.php`
+5. Exclude webhook routes from CSRF protection in `bootstrap/app.php`
+
+<code-snippet name="Webhook Client Structure" lang="php">
+// app/Webhooks/GitHubSignatureValidator.php
+final class GitHubSignatureValidator implements SignatureValidator
+{
+    public function isValid(Request $request, WebhookConfig $config): bool
+    {
+        $signature = $request->header($config->signatureHeaderName);
+        $computed = 'sha256=' . hash_hmac('sha256', $request->getContent(), $config->signingSecret);
+        return hash_equals($computed, $signature);
+    }
+}
+
+// app/Jobs/ProcessGitHubWebhookJob.php
+class ProcessGitHubWebhookJob extends ProcessWebhookJob
+{
+    public function handle(): void
+    {
+        $payload = $this->webhookCall->payload;
+        $event = $this->webhookCall->headers['x-github-event'][0] ?? null;
+        // Process event...
+    }
+}
+</code-snippet>
+
+### Sending Webhooks (webhook-server)
+
+When implementing webhook senders:
+
+1. Use `WebhookCall::create()` to dispatch webhooks
+2. Configure signature algorithm (typically HMAC SHA-256)
+3. Implement retry logic for failed deliveries
+
+=== laravel/socialite rules ===
+
+## Laravel Socialite
+
+Socialite provides OAuth authentication with GitHub (and other providers). This application uses Socialite for GitHub OAuth login and API access.
+
+### Configuration
+- Credentials are stored in `config/services.php` under `github`
+- Scopes are configured dynamically using `OAuthProvider` enum
+- Routes: `/auth/github` (redirect) and `/auth/github/callback` (callback)
+
+### Usage Pattern
+- Use `Socialite::driver('github')->scopes([...])->redirect()` to initiate OAuth
+- Use `Socialite::driver('github')->user()` to get the authenticated user
+- Cast the user to `Laravel\Socialite\Two\User` for type safety and access to `->token`
+
+<code-snippet name="Socialite Usage" lang="php">
+use Laravel\Socialite\Facades\Socialite;
+use Laravel\Socialite\Two\User as SocialiteUser;
+
+// Redirect to GitHub
+public function redirect(): RedirectResponse
+{
+    return Socialite::driver('github')
+        ->scopes(OAuthProvider::GitHub->scopes())
+        ->redirect();
+}
+
+// Handle callback
+public function callback(): RedirectResponse
+{
+    /** @var SocialiteUser $githubUser */
+    $githubUser = Socialite::driver('github')->user();
+
+    // Access token for API calls
+    $token = $githubUser->token;
+}
+</code-snippet>
+
+### Important Notes
+- Always wrap `Socialite::driver()->user()` in try/catch for `InvalidStateException`
+- Store the OAuth token securely for making GitHub API calls later
+- OAuth redirects require regular anchors, not Inertia Link (see Frontend Guidelines)
+
 === laravel/fortify rules ===
 
 ## Laravel Fortify
@@ -405,4 +576,225 @@ Fortify is a headless authentication backend that provides authentication routes
 - `Features::updateProfileInformation()` to let users update their profile.
 - `Features::updatePasswords()` to let users change their passwords.
 - `Features::resetPasswords()` for password reset via email.
+
+=== gitpulse architecture ===
+
+## CQRS Architecture (Actions & Queries)
+
+This application uses a simplified CQRS pattern to keep controllers thin and business logic organized:
+
+- **Actions** (`app/Actions`): Handle write operations (create, update, delete)
+- **Queries** (`app/Queries`): Handle read operations (never modify state)
+- **Contracts** (`app/Contracts`): Define interfaces for Actions and Queries
+
+### Rules for Actions
+- Must implement `App\Contracts\Action`
+- Must be `final` classes
+- Must have `Action` suffix (e.g., `ConnectGitHubAction`)
+- Execute via `->execute()` method
+- Handle one specific mutation per class
+- Fortify actions are exempt (they follow Laravel's convention)
+
+### Rules for Queries
+- Must implement `App\Contracts\Query`
+- Must be `final` classes
+- Must have `Query` suffix (e.g., `FindUserByGitHubIdQuery`)
+- Execute via `->get()` method
+- Never modify database state
+- Return data for Inertia::render()
+
+<code-snippet name="CQRS Action Example" lang="php">
+final class ConnectGitHubAction implements Action
+{
+    public function __construct(
+        private readonly User $user,
+        private readonly SocialiteUser $githubUser,
+    ) {}
+
+    public function execute(): bool
+    {
+        $this->user->update([...]);
+        return true;
+    }
+}
+
+// Usage in controller:
+(new ConnectGitHubAction($user, $githubUser))->execute();
+</code-snippet>
+
+<code-snippet name="CQRS Query Example" lang="php">
+final class FindUserByGitHubIdQuery implements Query
+{
+    public function __construct(
+        private readonly string $githubId,
+    ) {}
+
+    public function get(): ?User
+    {
+        return User::where('github_id', $this->githubId)->first();
+    }
+}
+
+// Usage in controller:
+$user = (new FindUserByGitHubIdQuery($githubId))->get();
+</code-snippet>
+
+## DTOs (Data Transfer Objects)
+
+DTOs live in `app/DTOs` and are used for type-safe data passing between layers.
+
+### Rules for DTOs
+- Must be `final readonly` classes
+- Use constructor property promotion
+- Include factory methods like `fromSocialite()`, `fromRequest()`, `fromArray()`
+- Include `toArray()` for database storage when needed
+- No business logic - only data transformation
+
+<code-snippet name="DTO Example" lang="php">
+final readonly class GitHubUserData
+{
+    public function __construct(
+        public string $id,
+        public string $username,
+        public ?string $name,
+        public ?string $email,
+        public ?string $avatar,
+        public ?string $token,
+    ) {}
+
+    public static function fromSocialite(SocialiteUser $user): self
+    {
+        return new self(
+            id: $user->getId(),
+            username: $user->getNickname() ?? '',
+            // ...
+        );
+    }
+
+    public function toArray(): array
+    {
+        return ['github_id' => $this->id, ...];
+    }
+}
+</code-snippet>
+
+## Constants (Enums)
+
+PHP 8.1+ enums live in `app/Constants` (not `app/Enums`) for type-safe constants.
+
+### Rules for Constants
+- Must be backed enums (string or int)
+- Enum case names must be TitleCase (e.g., `GitHub`, `Pending`, `Active`)
+- Include helper methods like `displayName()`, `iconName()`, `scopes()`
+- Use for status fields, types, providers, and other fixed values
+
+<code-snippet name="Enum/Constant Example" lang="php">
+enum OAuthProvider: string
+{
+    case GitHub = 'github';
+
+    public function displayName(): string
+    {
+        return match ($this) {
+            self::GitHub => 'GitHub',
+        };
+    }
+
+    public function scopes(): array
+    {
+        return match ($this) {
+            self::GitHub => ['read:user', 'user:email', 'repo'],
+        };
+    }
+}
+</code-snippet>
+
+## Architecture Tests
+
+Architecture tests in `tests/Feature/ArchitectureTest.php` enforce coding standards automatically using Pest's `arch()` function.
+
+### What Architecture Tests Enforce
+- Strict types in all PHP files
+- Controllers have `Controller` suffix
+- Models extend Eloquent Model
+- Requests extend FormRequest
+- Jobs implement ShouldQueue
+- Services have `Service` suffix
+- Middleware have `Middleware` suffix
+- Actions implement `Action` contract and are `final`
+- Queries implement `Query` contract and are `final`
+- DTOs are `final readonly`
+- Constants are enums
+- No debugging statements (dd, dump, ray)
+- No deprecated PHP functions
+- Controllers don't use `DB::` facade
+
+**Always run architecture tests after structural changes**: `php artisan test tests/Feature/ArchitectureTest.php`
+
+=== frontend guidelines ===
+
+## UI/UX Design Principles
+
+- Keep UIs clean, simple, and professional
+- Avoid visual clutter - use whitespace effectively
+- Follow existing brand guidelines and color scheme
+- Check existing components before creating new ones
+
+## Inertia Link vs Regular Anchors
+
+**Use Inertia `<Link>` for:**
+- Internal SPA navigation within the application
+- Any route that returns an Inertia response
+- Dashboard, settings, profile pages
+
+**Use regular `<a>` anchors for:**
+- OAuth flows (GitHub, Google, etc.) - require full page redirects to external providers
+- External URLs
+- File downloads
+- Any route that redirects to an external domain
+
+<code-snippet name="Correct Link Usage" lang="vue">
+<script setup>
+import { Link } from '@inertiajs/vue3';
+</script>
+
+<template>
+    <!-- Internal navigation - use Inertia Link -->
+    <Link href="/dashboard">Dashboard</Link>
+
+    <!-- OAuth - use regular anchor (redirects to external provider) -->
+    <a href="/auth/github">Sign in with GitHub</a>
+
+    <!-- External link - use regular anchor -->
+    <a href="https://github.com" target="_blank">GitHub</a>
+</template>
+</code-snippet>
+
+## Component Reusability
+
+Before creating a new component:
+1. Check `resources/js/components/` for existing components
+2. Check `resources/js/components/ui/` for shadcn/ui components
+3. If a similar component exists, extend or modify it
+4. Only create new components when truly necessary
+
+### Composable Components
+For complex UI patterns like tabs, abstract them into composable pieces:
+- Container component (e.g., `Tabs`)
+- Trigger component (e.g., `TabsTrigger`)
+- Content component (e.g., `TabsContent`)
+
+## Custom Scrollbars
+
+The application uses custom scrollbar styles defined in `resources/css/app.css`:
+- `.scrollbar-hide` - hides scrollbar completely
+- `.scrollbar-thin` - thin 4px scrollbar
+- Default scrollbars are styled to match the theme
+
+## Deferred Props & Loading States
+
+When using Inertia v2 deferred props, always show loading states:
+- Use pulsing/animated skeletons
+- Match skeleton shape to expected content
+- Provide meaningful empty states
 </laravel-boost-guidelines>

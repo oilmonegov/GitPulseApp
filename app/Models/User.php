@@ -1,8 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
+use DateTimeInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -22,6 +24,12 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'github_id',
+        'github_username',
+        'github_token',
+        'avatar_url',
+        'preferences',
+        'timezone',
     ];
 
     /**
@@ -34,6 +42,7 @@ class User extends Authenticatable
         'two_factor_secret',
         'two_factor_recovery_codes',
         'remember_token',
+        'github_token',
     ];
 
     /**
@@ -44,9 +53,43 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
+            'email_verified_at' => 'immutable_datetime',
             'password' => 'hashed',
-            'two_factor_confirmed_at' => 'datetime',
+            'two_factor_confirmed_at' => 'immutable_datetime',
+            'preferences' => 'array',
+            'github_token' => 'encrypted',
+            'created_at' => 'immutable_datetime',
+            'updated_at' => 'immutable_datetime',
         ];
+    }
+
+    /**
+     * Prepare a date for array / JSON serialization.
+     */
+    protected function serializeDate(DateTimeInterface $date): string
+    {
+        return $date->format('Y-m-d\TH:i:s.u\Z');
+    }
+
+    /**
+     * Check if the user has connected their GitHub account.
+     */
+    public function hasGitHubConnected(): bool
+    {
+        return ! is_null($this->github_id);
+    }
+
+    /**
+     * Get the user's avatar URL or a default gravatar.
+     */
+    public function getAvatarAttribute(): string
+    {
+        if ($this->avatar_url) {
+            return $this->avatar_url;
+        }
+
+        $hash = md5(strtolower(trim($this->email)));
+
+        return "https://www.gravatar.com/avatar/{$hash}?d=mp&s=200";
     }
 }

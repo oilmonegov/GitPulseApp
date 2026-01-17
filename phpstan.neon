@@ -1,0 +1,29 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    paths:
+        - app
+        - config
+        - database
+        - routes
+
+    level: 8
+
+    ignoreErrors:
+        # Inertia lazy props use closures
+        - '#Parameter \#2 .* of method Inertia\\ResponseFactory::render\(\) expects#'
+        # Socialite driver returns contract but has scopes method
+        - '#Call to an undefined method Laravel\\Socialite\\Contracts\\Provider::scopes\(\)#'
+        # Config files may have dynamic values
+        - '#Parameter .* of function rtrim expects string#'
+        # DatabaseCompatible trait prepared for analytics queries
+        - identifier: trait.unused
+          path: app/Concerns/DatabaseCompatible.php
+
+    excludePaths:
+        - vendor
+        - tests
+
+    reportUnmatchedIgnoredErrors: false
+    treatPhpDocTypesAsCertain: false
