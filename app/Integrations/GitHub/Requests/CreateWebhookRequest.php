@@ -27,6 +27,9 @@ final class CreateWebhookRequest extends Request implements HasBody
         return "/repos/{$this->owner}/{$this->repo}/hooks";
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     protected function defaultBody(): array
     {
         return [
