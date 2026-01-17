@@ -17,6 +17,13 @@ class Repository extends Model
     use HasFactory;
 
     /**
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'is_active' => true,
+    ];
+
+    /**
      * @var list<string>
      */
     protected $fillable = [
