@@ -4,6 +4,28 @@ A living document capturing decisions, reasoning, and lessons from GitPulse deve
 
 ---
 
+## Sprint 4: Saloon Integration & CI Improvements
+
+### What went wrong?
+- PHPStan wasn't in pre-push hooks - static analysis errors slipped through to CI
+- Wayfinder `--with-form` flag was missing in CI - frontend type-check failed because `.form()` helpers weren't generated
+- Local `npm run type-check` passed because Wayfinder types were already generated from previous builds - CI started fresh without them
+
+### What went well?
+- Saloon v3 refactoring went smoothly - GitHubService maintains backward compatibility as an adapter
+- MockClient testing pattern is cleaner than Http::fake() - request-class-based mocking is more explicit
+- Architecture tests for Integrations namespace catch structural violations automatically
+- Pre-push hook now runs both PHPStan AND tests - catches more issues locally
+
+### Why we chose this direction
+- **Saloon over HTTP client**: Saloon provides structured request classes, better testability with MockClient, and a consistent API pattern. Each endpoint is a self-contained Request class.
+- **Service as adapter**: GitHubService wraps the Saloon connector, keeping all public method signatures identical. Consumers (ProcessPushEventAction) work without changes.
+- **PHPStan in pre-push**: Static analysis errors are frustrating to discover only in CI. Running locally before push saves round-trip time.
+- **Wayfinder in CI with --with-form**: The frontend uses `.form()` helpers extensively. Without this flag, TypeScript types are incomplete. CI must mirror local dev setup.
+- **Final classes for connectors/requests**: Matches codebase conventions. Architecture tests enforce this automatically.
+
+---
+
 ## Sprint 4: Commit Documentation Engine
 
 ### What went wrong?
