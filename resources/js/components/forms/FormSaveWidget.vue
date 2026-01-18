@@ -31,7 +31,9 @@ const emit = defineEmits<{
     discard: [];
 }>();
 
-const isVisible = computed(() => props.isDirty || props.processing);
+const isVisible = computed(
+    () => props.isDirty || props.processing || props.recentlySuccessful,
+);
 
 const buttonText = computed(() => {
     if (props.processing) {

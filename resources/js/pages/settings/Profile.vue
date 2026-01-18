@@ -2,7 +2,6 @@
 import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 
 import { update as updateProfile } from '@/actions/App/Http/Controllers/Settings/ProfileController';
-import DeleteUser from '@/components/DeleteUser.vue';
 import { FormSaveWidget } from '@/components/forms';
 import HeadingSmall from '@/components/HeadingSmall.vue';
 import InputError from '@/components/InputError.vue';
@@ -108,8 +107,6 @@ const { isDirty, processing, recentlySuccessful, save, discard } =
                     </div>
                 </form>
             </div>
-
-            <DeleteUser />
         </SettingsLayout>
 
         <FormSaveWidget
