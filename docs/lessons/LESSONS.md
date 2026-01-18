@@ -4,6 +4,30 @@ A living document capturing decisions, reasoning, and lessons from GitPulse deve
 
 ---
 
+## Enhanced User Settings Hub
+
+### What went wrong?
+- Pre-push hooks ran PHPStan which found type issues with `$user->preferences` returning mixed - needed explicit type checks and casts
+- ESLint flagged computed functions without default returns in switch statements - TypeScript was happy but ESLint's `vue/return-in-computed-property` rule requires explicit defaults
+- Unused `router` import in Data.vue was caught by ESLint - leftover from initial implementation approach
+
+### What went well?
+- SettingCard component with status indicators provides visual feedback at a glance - users can see GitHub connection status, 2FA state, etc. without navigating
+- Switch component using reka-ui integrates cleanly with Vue reactivity - `@update:checked` emits work seamlessly with `router.patch()`
+- SettingSection/SettingRow pattern creates consistent visual hierarchy - new settings pages can follow the established pattern
+- ExportUserDataAction handles both JSON and CSV formats cleanly - match expression keeps the logic readable
+- Weekly digest job uses cursor() for memory-efficient iteration - handles large user bases without loading all into memory
+
+### Why we chose this direction
+- **Settings hub over direct navigation**: Central hub gives overview of account state. Users see at a glance what needs attention (unverified email, 2FA disabled).
+- **Status indicators with semantic colors**: Emerald for enabled/good, amber for warning, sky for info - follows established UX patterns. Monochromatic palette with accent colors.
+- **User preferences as JSON column**: Flexible schema for notification prefs, theme, etc. Avoids migration for each new preference. `array_replace_recursive` handles nested merges.
+- **Form-based file download over fetch**: Using hidden form submission triggers browser's native download handling. Avoids blob handling and memory issues for large exports.
+- **Scheduled job over user-triggered digest**: Weekly digest runs Monday 9am automatically. Users opt-in via toggle, don't have to remember to request it.
+- **Cursor over chunk for user iteration**: `cursor()` uses a generator, keeping memory constant. Better than `chunk()` for simple iteration without batch processing needs.
+
+---
+
 ## Development Lifecycle & Quality Gates
 
 ### What went wrong?
