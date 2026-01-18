@@ -226,6 +226,100 @@ borderColor: colors.value.primary
 
 ---
 
+## Enterprise Infrastructure: Tier 1 Production Features
+
+### What went wrong?
+- Composer's `pre-package-uninstall` script from Laravel Boost caused installation issues - had to use `--no-scripts` flag
+- Initial attempt to use `health: '/up'` alone wasn't enough - Spatie health checks provide more comprehensive monitoring beyond basic "up" status
+
+### What went well?
+- Sentry integration was straightforward - `Integration::handles($exceptions)` in bootstrap/app.php handles everything
+- Spatie laravel-health provides conditional checks (production-only, database-specific) - `->if()` method is elegant
+- Release-please automates changelog generation from conventional commits - no manual changelog maintenance
+- Gitleaks with custom `.gitleaks.toml` reduces false positives from test files and example configs
+- CodeQL adds SAST without any code changes - just a workflow file
+- Dependency-review-action catches vulnerable packages before merge
+
+### Why we chose this direction
+- **Sentry over custom logging**: Sentry provides error grouping, release tracking, performance monitoring, and alerting out of the box. Building this would take months.
+- **Spatie Health over custom endpoints**: Package provides 15+ built-in checks (database, cache, redis, horizon, queue, disk, etc.). Conditional execution handles environment differences.
+- **Release-please over conventional-changelog**: Google's release-please creates PRs with changelogs, auto-bumps versions, and creates GitHub releases. Less maintenance than npm-based tools.
+- **Gitleaks over trufflesecurity**: Gitleaks has cleaner false-positive management via `.gitleaks.toml`. Free for open source. Easy GitHub Action integration.
+- **CodeQL for JavaScript only**: PHP CodeQL support is limited. JavaScript/TypeScript analysis catches XSS, prototype pollution, SQL injection in frontend code.
+- **Health check routes separate from `/up`**: `/up` is for load balancer basic checks. `/health` provides detailed diagnostics. `/health/json` is for automated monitoring.
+- **Scheduled security scans**: Weekly cron job catches vulnerabilities even when not actively developing.
+
+### Code Pattern
+```php
+// Conditional health checks in AppServiceProvider
+Health::checks([
+    DatabaseCheck::new(),
+    CacheCheck::new(),
+    DebugModeCheck::new()->if(app()->isProduction()),
+    HorizonCheck::new()->if(config('queue.default') === 'redis'),
+]);
+
+// Sentry integration in bootstrap/app.php
+->withExceptions(function (Exceptions $exceptions): void {
+    Integration::handles($exceptions);
+});
+```
+
+---
+
+## UI Enhancement: Notifications, Form Save Widget & Design System Consistency
+
+### What went wrong?
+- Initially installed `sonner` (React version) instead of `vue-sonner` (Vue port) - had to uninstall and reinstall the correct package
+- Found multiple places using hardcoded neutral colors (`text-neutral-600`, `decoration-neutral-300`) instead of semantic CSS variables - these don't match the warm color palette in light mode
+- Some components had redundant `dark:` variants when the CSS variables already handle light/dark differences
+
+### What went well?
+- Vue-sonner integrates cleanly with Vue 3 - just wrap the Toaster in app.ts with `h()` function alongside the main App component
+- Toaster styling matches design system by using group selectors (`group-[.toaster]:bg-card`) to target toast classes
+- FormSaveWidget composable with `useFormSaveWidget` provides clean separation between dirty state tracking and UI rendering
+- Teleport to body ensures the save widget renders above all content regardless of z-index stacking
+- Audit found and fixed 7 files with hardcoded neutral colors that clashed with warm color palette
+
+### Why we chose this direction
+- **Vue-sonner over other toast libraries**: Vue-sonner is the official Vue port of Sonner, matching patterns from shadcn-vue. Other libraries like vue-toastification have different APIs and styling approaches.
+- **Composable + Component pattern for FormSaveWidget**: Separating the state logic (`useFormSaveWidget`) from the UI (`FormSaveWidget`) allows the widget to work with any form using Inertia's useForm. The composable handles isDirty tracking, save/discard actions, and toast notifications.
+- **Teleport over fixed positioning within layout**: Fixed position elements inside scrollable containers can have z-index issues. Teleporting to body guarantees visibility.
+- **Semantic CSS variables over hardcoded colors**: Using `text-muted-foreground` instead of `text-neutral-600` ensures colors adapt to both light and dark themes while respecting the warm color palette (`hsl(20 8% 46%)` in light, `hsl(30 10% 60%)` in dark).
+- **Decoration-border over decoration-neutral**: Link underline decorations should use the border color variable which matches the warm palette (`hsl(30 15% 90%)` in light mode) rather than neutral grays that feel cold against warm backgrounds.
+
+### Code Patterns
+```typescript
+// app.ts - Adding Toaster at root level
+createApp({
+    render: () => h('div', [h(App, props), h(Toaster)]),
+})
+
+// useFormSaveWidget composable
+const { isDirty, processing, recentlySuccessful, save, discard } =
+    useFormSaveWidget({
+        form,
+        route: updateProfile,
+        successMessage: 'Profile updated successfully',
+    });
+
+// FormSaveWidget with Teleport
+<Teleport to="body">
+    <div :data-visible="isVisible" class="fixed bottom-6 ...">
+        <!-- Widget content -->
+    </div>
+</Teleport>
+```
+
+### Design System Guidelines Established
+1. **Always use semantic CSS variables**: `text-foreground`, `text-muted-foreground`, `bg-card`, `border-border`, etc.
+2. **Avoid hardcoded neutral/gray colors**: They clash with the warm color palette
+3. **Use `dark:` variants only when necessary**: CSS variables already handle theme switching
+4. **Toast styling via classNames prop**: Use group selectors to style toasts consistently with the design system
+5. **Light mode accent**: The amber accent `hsl(32 95% 55%)` should be visible but not overwhelming in light mode - use with reduced opacity
+
+---
+
 ## Template for New Entries
 
 ```markdown
