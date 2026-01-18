@@ -5,7 +5,7 @@ updated: 2026-01-18
 
 # Frontend Lessons
 
-> **Quick summary for agents**: Use `useChartColors` composable for Chart.js theming with MutationObserver for dark mode detection. Always use semantic CSS variables (`text-muted-foreground`) instead of hardcoded colors (`text-neutral-600`). Use `vue-sonner` for toasts with group selectors for styling. For Inertia v2 deferred props: group related props on backend with named group, use `<Deferred :data="[...]">` array on frontend, and always provide skeleton loading states. Use regular `<a>` tags for OAuth flows, not Inertia `<Link>`.
+> **Quick summary for agents**: Use `useChartColors` composable for Chart.js theming with MutationObserver for dark mode detection. Always use semantic CSS variables (`text-muted-foreground`) instead of hardcoded colors (`text-neutral-600`). Use `vue-sonner` for toasts with group selectors for styling. **Avoid Inertia v2 deferred props** - they cause CSP violations; use synchronous loading instead. Use regular `<a>` tags for OAuth flows, not Inertia `<Link>`.
 
 ---
 
@@ -156,27 +156,28 @@ const { isDirty, processing, recentlySuccessful, save, discard } =
 
 ---
 
-## Inertia v2 Deferred Props: Infinite Loading Fix
+## Inertia v2 Deferred Props: CSP Compatibility Issues
 
 ### What went wrong?
-- Dashboard displayed infinite loading shimmer even though data queries worked correctly
-- Initial implementation used separate `Inertia::defer()` calls without grouping, resulting in multiple parallel requests
-- Frontend `<Deferred>` component was waiting for props that weren't arriving in the expected format
-- The disconnect between backend groups and frontend prop arrays caused the loading state to never resolve
+- Inertia v2 deferred props caused Content Security Policy (CSP) violations
+- CSP blocked `eval()` or similar dynamic evaluation used internally by the deferred loading mechanism
+- Error message: "CSP prevents evaluation of arbitrary strings as JavaScript"
+- Dashboard showed infinite loading or failed to render with deferred props enabled
+- The issue occurred even with properly grouped deferred props
 
 ### What went well?
-- Tinker testing confirmed the queries themselves work correctly - problem was isolated to Inertia's deferred loading mechanism
-- Grouping all deferred props into a single group ('dashboard') ensures they all load in one follow-up request
-- Using `<Deferred :data="['summary', 'commitsOverTime', 'commitTypeDistribution']">` with array of props matches exactly what the backend sends
-- Loading skeletons in fallback template provide good UX during the brief load time
+- Synchronous loading works reliably without CSP issues
+- Dashboard data queries are fast enough that deferred loading isn't necessary
+- Tinker testing confirmed queries work - issue isolated to Inertia's deferred mechanism interacting with CSP
 
 ### Why we chose this direction
-- **Single group over separate requests**: Grouping related props means one network request instead of multiple. For dashboard data that's rendered together, this reduces latency and complexity.
-- **Named group over default**: Using explicit group name 'dashboard' makes the code self-documenting and allows future props to be added to the same load sequence.
-- **Array in Deferred component**: The `<Deferred :data="[...]">` syntax waits for ALL listed props before rendering - exactly what we need for a dashboard where partial data would look broken.
-- **Skeleton fallback matching layout**: Fallback template mirrors the actual content structure so there's no layout shift when data loads.
+- **Synchronous over deferred**: For pages with fast queries, synchronous loading is simpler and avoids CSP complications. The perceived performance difference is negligible.
+- **Reliability over optimization**: Deferred props add complexity and potential failure modes. When they don't work in certain environments (strict CSP), synchronous loading is the safer choice.
+- **Future consideration**: If CSP issues are resolved (via nonces or CSP configuration), deferred props can be re-enabled. The pattern is documented below for reference.
 
-### Code Pattern
+### Deferred Props Pattern (For Future Reference)
+If your environment doesn't have CSP restrictions, deferred props work like this:
+
 ```php
 // Controller - group related deferred props
 return Inertia::render('Dashboard', [
@@ -188,7 +189,6 @@ return Inertia::render('Dashboard', [
         fn () => (new CommitsOverTimeQuery($user, $startDate, $endDate))->get(),
         'dashboard',
     ),
-    // ... more props in same group
 ]);
 ```
 
@@ -201,6 +201,11 @@ return Inertia::render('Dashboard', [
     <!-- Actual content renders when ALL props are ready -->
 </Deferred>
 ```
+
+### CSP Resolution Options (If Needed Later)
+1. Add `'unsafe-eval'` to script-src in CSP (less secure)
+2. Use CSP nonces with Vite integration (more secure but complex)
+3. Configure web server (Herd/Nginx) to allow specific scripts
 
 ---
 
