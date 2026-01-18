@@ -90,10 +90,10 @@ jobs:
           MIN_SCORE="${{ github.event.inputs.min_score || '70' }}"
           CLASS_FILTER="${{ github.event.inputs.class_filter }}"
 
-          MUTATION_CMD="php artisan test --mutate --parallel --min=${MIN_SCORE} --covered-only"
-
           if [ -n "$CLASS_FILTER" ]; then
-            MUTATION_CMD="$MUTATION_CMD --class=$CLASS_FILTER"
+            MUTATION_CMD="php artisan test --mutate --parallel --min=${MIN_SCORE} --class=$CLASS_FILTER"
+          else
+            MUTATION_CMD="php artisan test --mutate --parallel --min=${MIN_SCORE} --everything --covered-only"
           fi
 
           echo "Running: $MUTATION_CMD"
@@ -173,9 +173,8 @@ jobs:
         run: |
           # Run mutation testing on critical paths only for speed
           php artisan test --mutate --parallel --min=60 \
-            --class=App\\Actions \
-            --class=App\\Queries \
-            --covered-only \
+            --path=app/Actions \
+            --path=app/Queries \
             --bail
         env:
           DB_CONNECTION: sqlite

@@ -464,6 +464,25 @@ const { isDirty, processing, recentlySuccessful, save, discard } =
 
 ---
 
+## Pest Mutation Testing Configuration
+
+### What went wrong?
+- Pest 4's mutation testing requires explicit scope: either `covers()`/`mutates()` in tests, or CLI filters like `--everything`, `--path`, or `--class`
+- Using `--covered-only` alone without `--everything` causes Pest to error out asking for scope definition
+- Multiple `--class` flags don't work as expected - use `--path` for directory-based filtering
+
+### What went well?
+- Pest's error message clearly explains the options available
+- `--everything --covered-only` combination runs mutations on all code that has test coverage
+- `--path=app/Actions` filter is cleaner than class-based filtering for directory scopes
+
+### Why we chose this direction
+- **--everything --covered-only for full runs**: Generates mutations for all covered code without requiring `covers()` annotations in every test file
+- **--path over --class for quick checks**: Path-based filtering is more intuitive and doesn't require escaping backslashes in workflow YAML
+- **Separate full vs quick jobs**: Full mutation testing is slow; quick checks on PRs focus on critical business logic (Actions, Queries)
+
+---
+
 ## Settings Page: Sticky Sidebar & Custom Scrollbar
 
 ### What went wrong?
