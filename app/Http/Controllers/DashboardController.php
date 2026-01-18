@@ -28,9 +28,18 @@ class DashboardController extends Controller
         $endDate = Carbon::now()->endOfDay();
 
         return Inertia::render('Dashboard', [
-            'summary' => (new DashboardSummaryQuery($user, $startDate, $endDate))->get(),
-            'commitsOverTime' => (new CommitsOverTimeQuery($user, $startDate, $endDate))->get(),
-            'commitTypeDistribution' => (new CommitTypeDistributionQuery($user, $startDate, $endDate))->get(),
+            'summary' => Inertia::defer(
+                fn () => (new DashboardSummaryQuery($user, $startDate, $endDate))->get(),
+                'dashboard',
+            ),
+            'commitsOverTime' => Inertia::defer(
+                fn () => (new CommitsOverTimeQuery($user, $startDate, $endDate))->get(),
+                'dashboard',
+            ),
+            'commitTypeDistribution' => Inertia::defer(
+                fn () => (new CommitTypeDistributionQuery($user, $startDate, $endDate))->get(),
+                'dashboard',
+            ),
         ]);
     }
 }
