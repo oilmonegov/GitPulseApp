@@ -72,7 +72,7 @@ class SendWeeklyDigestJob implements ShouldQueue
 
         $topRepositories = $commits->groupBy('repository_id')
             ->map(fn ($repoCommits) => [
-                'name' => $repoCommits->first()->repository?->full_name ?? 'Unknown',
+                'name' => $repoCommits->first()?->repository->full_name ?? 'Unknown',
                 'commits' => $repoCommits->count(),
             ])
             ->sortByDesc('commits')

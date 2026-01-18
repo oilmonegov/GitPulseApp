@@ -58,16 +58,19 @@ final class ExportUserDataAction implements Action
                 'total_deletions' => $commits->sum('deletions'),
                 'average_impact_score' => round($commits->avg('impact_score') ?? 0, 2),
             ],
-            'commits' => $commits->map(fn (\App\Models\Commit $commit): array => [
-                'sha' => $commit->sha,
-                'message' => $commit->message,
-                'repository' => $commit->repository?->full_name,
-                'additions' => $commit->additions,
-                'deletions' => $commit->deletions,
-                'impact_score' => $commit->impact_score,
-                'commit_type' => $commit->commit_type->value,
-                'committed_at' => $commit->committed_at->toIso8601String(),
-            ])->toArray(),
+            'commits' => $commits->map(function ($commit): array {
+                /** @var \App\Models\Commit $commit */
+                return [
+                    'sha' => $commit->sha,
+                    'message' => $commit->message,
+                    'repository' => $commit->repository?->full_name,
+                    'additions' => $commit->additions,
+                    'deletions' => $commit->deletions,
+                    'impact_score' => $commit->impact_score,
+                    'commit_type' => $commit->commit_type->value,
+                    'committed_at' => $commit->committed_at->toIso8601String(),
+                ];
+            })->toArray(),
             'exported_at' => Carbon::now()->toIso8601String(),
         ];
     }
@@ -81,9 +84,11 @@ final class ExportUserDataAction implements Action
     {
         $filename = sprintf('gitpulse-export-%s.json', Carbon::now()->format('Y-m-d'));
 
+        $content = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+
         return [
             'filename' => $filename,
-            'content' => json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES),
+            'content' => $content !== false ? $content : '{}',
             'mime_type' => 'application/json',
         ];
     }
@@ -98,7 +103,7 @@ final class ExportUserDataAction implements Action
         $filename = sprintf('gitpulse-commits-%s.csv', Carbon::now()->format('Y-m-d'));
 
         $lines = [];
-        $lines[] = 'sha,message,repository,additions,deletions,impact_score,category,committed_at';
+        $lines[] = 'sha,message,repository,additions,deletions,impact_score,commit_type,committed_at';
 
         foreach ($data['commits'] as $commit) {
             $lines[] = sprintf(
@@ -109,7 +114,7 @@ final class ExportUserDataAction implements Action
                 $commit['additions'] ?? 0,
                 $commit['deletions'] ?? 0,
                 $commit['impact_score'] ?? 0,
-                $commit['category'] ?? '',
+                $commit['commit_type'] ?? '',
                 $commit['committed_at'] ?? '',
             );
         }

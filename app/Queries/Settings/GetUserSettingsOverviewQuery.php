@@ -35,7 +35,8 @@ final class GetUserSettingsOverviewQuery implements Query
      */
     public function get(): array
     {
-        $preferences = $this->user->preferences ?? [];
+        /** @var array<string, mixed> $preferences */
+        $preferences = is_array($this->user->preferences) ? $this->user->preferences : [];
 
         return [
             'profile' => [
@@ -52,7 +53,7 @@ final class GetUserSettingsOverviewQuery implements Query
                 'configured' => $this->hasNotificationsConfigured($preferences),
             ],
             'appearance' => [
-                'theme' => $preferences['theme'] ?? 'system',
+                'theme' => is_string($preferences['theme'] ?? null) ? $preferences['theme'] : 'system',
             ],
         ];
     }

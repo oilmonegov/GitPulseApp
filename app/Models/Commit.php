@@ -14,6 +14,7 @@ use Illuminate\Support\Carbon;
 
 /**
  * @property \Carbon\CarbonImmutable $committed_at
+ * @property \App\Constants\CommitType $commit_type
  */
 class Commit extends Model
 {

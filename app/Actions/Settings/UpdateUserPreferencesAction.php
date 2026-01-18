@@ -22,7 +22,8 @@ final class UpdateUserPreferencesAction implements Action
 
     public function execute(): bool
     {
-        $currentPreferences = $this->user->preferences ?? [];
+        /** @var array<string, mixed> $currentPreferences */
+        $currentPreferences = is_array($this->user->preferences) ? $this->user->preferences : [];
         $mergedPreferences = array_replace_recursive($currentPreferences, $this->newPreferences);
 
         $this->user->update([
