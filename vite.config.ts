@@ -24,4 +24,33 @@ export default defineConfig({
             },
         }),
     ],
+    build: {
+        chunkSizeWarningLimit: 550,
+        rollupOptions: {
+            output: {
+                manualChunks(id) {
+                    if (id.includes('node_modules')) {
+                        if (
+                            id.includes('chart.js') ||
+                            id.includes('vue-chartjs')
+                        ) {
+                            return 'chart';
+                        }
+                        if (id.includes('reka-ui')) {
+                            return 'ui';
+                        }
+                        if (id.includes('lucide-vue-next')) {
+                            return 'icons';
+                        }
+                        if (
+                            id.includes('@inertiajs') ||
+                            id.includes('@vueuse')
+                        ) {
+                            return 'vendor';
+                        }
+                    }
+                },
+            },
+        },
+    },
 });
