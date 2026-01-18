@@ -15,6 +15,7 @@ import { computed } from 'vue';
 import { Line } from 'vue-chartjs';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useChartColors } from '@/composables/useChartColors';
 import type { CommitOverTime } from '@/types';
 
 import ChartSkeleton from './ChartSkeleton.vue';
@@ -39,6 +40,8 @@ const props = withDefaults(defineProps<Props>(), {
     loading: false,
 });
 
+const { colors, themeKey } = useChartColors();
+
 const chartData = computed(() => {
     if (!props.data) return { labels: [], datasets: [] };
 
@@ -48,21 +51,21 @@ const chartData = computed(() => {
             {
                 label: 'Commits',
                 data: props.data.map((item) => item.count),
-                borderColor: 'hsl(var(--primary))',
-                backgroundColor: 'hsl(var(--primary) / 0.1)',
+                borderColor: colors.value.primary,
+                backgroundColor: colors.value.primary.replace(')', ' / 0.1)'),
                 fill: true,
                 tension: 0.4,
                 pointRadius: 0,
                 pointHoverRadius: 6,
-                pointBackgroundColor: 'hsl(var(--primary))',
-                pointBorderColor: 'hsl(var(--background))',
+                pointBackgroundColor: colors.value.primary,
+                pointBorderColor: colors.value.background,
                 pointBorderWidth: 2,
             },
         ],
     };
 });
 
-const chartOptions = {
+const chartOptions = computed(() => ({
     responsive: true,
     maintainAspectRatio: false,
     interaction: {
@@ -74,10 +77,10 @@ const chartOptions = {
             display: false,
         },
         tooltip: {
-            backgroundColor: 'hsl(var(--popover))',
-            titleColor: 'hsl(var(--popover-foreground))',
-            bodyColor: 'hsl(var(--popover-foreground))',
-            borderColor: 'hsl(var(--border))',
+            backgroundColor: colors.value.popover,
+            titleColor: colors.value.popoverForeground,
+            bodyColor: colors.value.popoverForeground,
+            borderColor: colors.value.border,
             borderWidth: 1,
             cornerRadius: 8,
             padding: 12,
@@ -97,7 +100,7 @@ const chartOptions = {
                 display: false,
             },
             ticks: {
-                color: 'hsl(var(--muted-foreground))',
+                color: colors.value.mutedForeground,
                 maxTicksLimit: 7,
             },
             border: {
@@ -107,10 +110,10 @@ const chartOptions = {
         y: {
             beginAtZero: true,
             grid: {
-                color: 'hsl(var(--border) / 0.5)',
+                color: colors.value.border.replace(')', ' / 0.5)'),
             },
             ticks: {
-                color: 'hsl(var(--muted-foreground))',
+                color: colors.value.mutedForeground,
                 stepSize: 1,
             },
             border: {
@@ -118,7 +121,7 @@ const chartOptions = {
             },
         },
     },
-};
+}));
 
 const totalCommits = computed(() => {
     if (!props.data) return 0;
@@ -142,7 +145,11 @@ const totalCommits = computed(() => {
             </template>
             <template v-else>
                 <div class="h-[300px]">
-                    <Line :data="chartData" :options="chartOptions" />
+                    <Line
+                        :key="themeKey"
+                        :data="chartData"
+                        :options="chartOptions"
+                    />
                 </div>
             </template>
         </CardContent>
