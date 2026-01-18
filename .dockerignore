@@ -1,0 +1,73 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# Dependencies (rebuilt in container)
+/vendor
+/node_modules
+
+# Build artifacts
+/public/build
+/public/hot
+
+# Storage (mounted as volume)
+/storage/app/*
+/storage/framework/cache/*
+/storage/framework/sessions/*
+/storage/framework/views/*
+/storage/logs/*
+!/storage/app/.gitignore
+!/storage/framework/.gitignore
+!/storage/framework/cache/.gitignore
+!/storage/framework/sessions/.gitignore
+!/storage/framework/views/.gitignore
+!/storage/logs/.gitignore
+
+# Testing
+/tests
+/coverage
+coverage.xml
+.phpunit.result.cache
+phpunit.xml
+
+# Documentation
+/docs
+*.md
+!README.md
+
+# CI/CD
+.github
+.husky
+
+# Environment files (use docker secrets or env vars)
+.env
+.env.*
+!.env.example
+
+# Development tools
+.editorconfig
+.prettierrc
+.eslintrc*
+eslint.config.*
+phpstan.neon
+pint.json
+rector.php
+
+# Docker (don't include in context recursively)
+docker-compose*.yml
+Dockerfile*
+
+# Load tests
+/tests/Load
+
+# Misc
+.DS_Store
+Thumbs.db
+*.log

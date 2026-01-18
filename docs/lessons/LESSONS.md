@@ -267,6 +267,149 @@ Health::checks([
 
 ---
 
+## Enterprise Infrastructure: Tier 2 Scaling Features
+
+### What went wrong?
+- Laravel Pennant docs search returned no results from Boost - had to rely on package knowledge
+- k6 load test scripts need a results directory created before run - added `mkdir -p` to workflow
+
+### What went well?
+- Pennant's class-based features are elegant - each feature is a self-contained file with clear documentation
+- Conditional feature resolution (lottery, user attributes, config) covers all common rollout patterns
+- Codecov.yml configuration is straightforward - ignores appropriate directories and sets reasonable thresholds
+- k6 load testing provides three tiers: smoke (sanity), load (normal), stress (breaking point)
+- Load test workflow supports manual dispatch with environment selection - safe for staging vs production
+
+### Why we chose this direction
+- **Pennant over custom flags**: Laravel Pennant provides database-backed feature storage, A/B testing support via Lottery, and clean class-based feature definitions. Rolling your own misses these patterns.
+- **Class-based features over closures**: Each feature in `app/Features/` is documented, testable, and follows consistent patterns. Closures in `AppServiceProvider` become unwieldy at scale.
+- **Codecov over Coveralls**: Codecov has better GitHub integration, PR comments with coverage diff, and flag support for separating unit/feature tests.
+- **k6 over JMeter/Gatling**: k6 uses JavaScript (familiar to web devs), has better CI integration, and produces cleaner output. JMeter's XML config is harder to version control.
+- **Three test levels**: Smoke (1 VU, 30s) catches obvious breaks. Load (10-50 VUs, 20min) simulates normal traffic. Stress (up to 300 VUs) finds breaking points.
+- **Manual trigger for load tests**: Scheduled smoke tests are safe, but load/stress tests should be intentional. workflow_dispatch prevents accidental resource usage.
+
+### Code Patterns
+```php
+// Feature flag with lottery rollout
+final class AdvancedAnalytics
+{
+    public function resolve(User $user): bool
+    {
+        return Lottery::odds(1, 10)->choose(); // 10% rollout
+    }
+}
+
+// Feature flag based on user state
+final class TeamAnalytics
+{
+    public function resolve(User $user): bool
+    {
+        return $user->repositories()->count() >= 3;
+    }
+}
+
+// Using feature flags in controllers
+use Laravel\Pennant\Feature;
+
+if (Feature::active(AdvancedAnalytics::class)) {
+    // Show advanced analytics
+}
+```
+
+```javascript
+// k6 load test with thresholds
+export const options = {
+    stages: [
+        { duration: '2m', target: 10 },  // Ramp up
+        { duration: '5m', target: 50 },  // Peak load
+        { duration: '2m', target: 0 },   // Ramp down
+    ],
+    thresholds: {
+        http_req_duration: ['p(95)<1000'], // 95% under 1s
+        http_req_failed: ['rate<0.05'],    // <5% failures
+    },
+};
+```
+
+---
+
+## Enterprise Infrastructure: Tier 3 Polish Features
+
+### What went wrong?
+- Dockerfile multi-stage build requires careful ordering - frontend build needs vendor directory for Wayfinder types
+- Supervisord config needed to manage both nginx and php-fpm in single container (plus workers and scheduler)
+- MySQL init.sql permissions needed explicit GRANT for testing database
+
+### What went well?
+- **Docker is optional** - app works with Herd, Valet, traditional PHP, or Docker. Multiple deployment paths documented.
+- Multi-stage Docker build keeps final image small (~150MB) while having full build capabilities
+- Docker Compose profiles allow optional worker/scheduler containers without cluttering default startup
+- Scramble auto-generates OpenAPI docs from route definitions - zero manual spec writing
+- Pest mutation testing is built into Pest 4 - no extra package needed, just `--mutate` flag
+- Visual regression tests already existed in codebase - just needed CI workflow
+- Created comprehensive `docs/DEPLOYMENT.md` covering Herd, Valet, Forge, Vapor, VPS, and Docker
+
+### Why we chose this direction
+- **Environment agnostic**: Application works on Laravel Herd, Valet, traditional servers, Docker, or serverless (Vapor). Docker is an option, not a requirement.
+- **Multi-stage Dockerfile over single stage**: Separating build stages (base, composer, frontend, production) enables caching and reduces final image size. Production image doesn't include dev dependencies or build tools.
+- **Supervisord over separate containers**: For simple deployments, single container with nginx + php-fpm + workers is easier to manage. For Kubernetes, you'd split these into separate containers.
+- **Alpine over Ubuntu base**: Alpine images are ~5MB vs Ubuntu's ~70MB. PHP extensions install fine on Alpine with apk.
+- **Scramble over L5-Swagger**: Scramble infers API structure from code - no annotations needed. L5-Swagger requires manual OpenAPI annotations which drift from actual implementation.
+- **Mutation testing in CI for PRs only**: Full mutation testing is slow. Running on PRs to main catches issues before merge. Weekly scheduled runs provide comprehensive coverage.
+- **Visual regression on path changes**: Only run visual tests when frontend/routes change. Avoids wasting CI resources on backend-only changes.
+
+### Code Patterns
+```dockerfile
+# Multi-stage Dockerfile pattern
+FROM php:8.4-fpm-alpine AS base
+# Install extensions...
+
+FROM base AS composer
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+RUN composer install --no-dev --optimize-autoloader
+
+FROM node:22-alpine AS frontend
+COPY --from=composer /app/vendor ./vendor  # Need vendor for Wayfinder
+RUN npm run build
+
+FROM base AS production
+COPY --from=composer /app/vendor ./vendor
+COPY --from=frontend /app/public/build ./public/build
+```
+
+```yaml
+# Docker Compose profiles for optional services
+services:
+  worker:
+    profiles:
+      - worker  # Only starts with: docker compose --profile worker up
+```
+
+```bash
+# Mutation testing
+php artisan test --mutate --parallel --min=70 --covered-only
+```
+
+### Docker Commands Reference
+```bash
+# Build and run
+docker compose up -d
+
+# With workers
+docker compose --profile worker up -d
+
+# View logs
+docker compose logs -f app
+
+# Shell access
+docker compose exec app sh
+
+# Production build
+docker build -t gitpulse:latest --target production .
+```
+
+---
+
 ## UI Enhancement: Notifications, Form Save Widget & Design System Consistency
 
 ### What went wrong?
