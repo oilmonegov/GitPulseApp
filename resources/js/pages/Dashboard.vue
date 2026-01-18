@@ -1,11 +1,26 @@
 <script setup lang="ts">
-import { Head } from '@inertiajs/vue3';
+import { Deferred, Head } from '@inertiajs/vue3';
+import { Code2, GitCommitHorizontal, TrendingUp } from 'lucide-vue-next';
 
+import {
+    CommitsOverTimeChart,
+    CommitTypeDonut,
+    StatCard,
+} from '@/components/Dashboard';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { dashboard } from '@/routes';
-import { type BreadcrumbItem } from '@/types';
+import type {
+    BreadcrumbItem,
+    CommitOverTime,
+    CommitTypeDistribution,
+    DashboardSummary,
+} from '@/types';
 
-import PlaceholderPattern from '../components/PlaceholderPattern.vue';
+defineProps<{
+    summary?: DashboardSummary;
+    commitsOverTime?: CommitOverTime[];
+    commitTypeDistribution?: CommitTypeDistribution[];
+}>();
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -13,36 +28,74 @@ const breadcrumbs: BreadcrumbItem[] = [
         href: dashboard().url,
     },
 ];
+
+const formatImpact = (value: number | undefined): string => {
+    if (value === undefined) return '—';
+    return value.toFixed(1);
+};
 </script>
 
 <template>
     <Head title="Dashboard" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div
-            class="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4"
-        >
-            <div class="grid auto-rows-min gap-4 md:grid-cols-3">
-                <div
-                    class="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border"
-                >
-                    <PlaceholderPattern />
+        <div class="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
+            <Deferred data="summary">
+                <template #fallback>
+                    <div class="grid gap-4 md:grid-cols-3">
+                        <StatCard
+                            label="Total Commits"
+                            :icon="GitCommitHorizontal"
+                            loading
+                        />
+                        <StatCard
+                            label="Average Impact"
+                            :icon="TrendingUp"
+                            loading
+                        />
+                        <StatCard label="Lines Changed" :icon="Code2" loading />
+                    </div>
+                </template>
+
+                <div class="grid gap-4 md:grid-cols-3">
+                    <StatCard
+                        label="Total Commits"
+                        :value="summary?.total_commits"
+                        :icon="GitCommitHorizontal"
+                    />
+                    <StatCard
+                        label="Average Impact"
+                        :value="formatImpact(summary?.average_impact)"
+                        :icon="TrendingUp"
+                    />
+                    <StatCard
+                        label="Lines Changed"
+                        :value="summary?.lines_changed"
+                        :icon="Code2"
+                    />
                 </div>
-                <div
-                    class="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border"
-                >
-                    <PlaceholderPattern />
+            </Deferred>
+
+            <div class="grid flex-1 gap-6 lg:grid-cols-3">
+                <div class="lg:col-span-2">
+                    <Deferred data="commitsOverTime">
+                        <template #fallback>
+                            <CommitsOverTimeChart loading />
+                        </template>
+
+                        <CommitsOverTimeChart :data="commitsOverTime" />
+                    </Deferred>
                 </div>
-                <div
-                    class="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border"
-                >
-                    <PlaceholderPattern />
+
+                <div>
+                    <Deferred data="commitTypeDistribution">
+                        <template #fallback>
+                            <CommitTypeDonut loading />
+                        </template>
+
+                        <CommitTypeDonut :data="commitTypeDistribution" />
+                    </Deferred>
                 </div>
-            </div>
-            <div
-                class="relative min-h-[100vh] flex-1 rounded-xl border border-sidebar-border/70 md:min-h-min dark:border-sidebar-border"
-            >
-                <PlaceholderPattern />
             </div>
         </div>
     </AppLayout>
