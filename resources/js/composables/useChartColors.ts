@@ -24,20 +24,21 @@ export function useChartColors() {
     };
 
     const getColors = () => ({
-        primary: `hsl(${getCssVariable('--primary')})`,
-        primaryForeground: `hsl(${getCssVariable('--primary-foreground')})`,
-        background: `hsl(${getCssVariable('--background')})`,
-        foreground: `hsl(${getCssVariable('--foreground')})`,
-        muted: `hsl(${getCssVariable('--muted')})`,
-        mutedForeground: `hsl(${getCssVariable('--muted-foreground')})`,
-        border: `hsl(${getCssVariable('--border')})`,
-        popover: `hsl(${getCssVariable('--popover')})`,
-        popoverForeground: `hsl(${getCssVariable('--popover-foreground')})`,
-        chart1: `hsl(${getCssVariable('--chart-1')})`,
-        chart2: `hsl(${getCssVariable('--chart-2')})`,
-        chart3: `hsl(${getCssVariable('--chart-3')})`,
-        chart4: `hsl(${getCssVariable('--chart-4')})`,
-        chart5: `hsl(${getCssVariable('--chart-5')})`,
+        // CSS variables already contain complete hsl() values, so we use them directly
+        primary: getCssVariable('--primary'),
+        primaryForeground: getCssVariable('--primary-foreground'),
+        background: getCssVariable('--background'),
+        foreground: getCssVariable('--foreground'),
+        muted: getCssVariable('--muted'),
+        mutedForeground: getCssVariable('--muted-foreground'),
+        border: getCssVariable('--border'),
+        popover: getCssVariable('--popover'),
+        popoverForeground: getCssVariable('--popover-foreground'),
+        chart1: getCssVariable('--chart-1'),
+        chart2: getCssVariable('--chart-2'),
+        chart3: getCssVariable('--chart-3'),
+        chart4: getCssVariable('--chart-4'),
+        chart5: getCssVariable('--chart-5'),
     });
 
     const colors = ref(getColors());
