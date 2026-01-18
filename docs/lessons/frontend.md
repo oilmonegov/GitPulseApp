@@ -1,11 +1,11 @@
 ---
-tags: [vue, inertia, chartjs, ui-components, design-system, dark-mode, css, toasts, forms]
+tags: [vue, inertia, chartjs, ui-components, design-system, dark-mode, css, toasts, forms, deferred-props]
 updated: 2026-01-18
 ---
 
 # Frontend Lessons
 
-> **Quick summary for agents**: Use `useChartColors` composable for Chart.js theming with MutationObserver for dark mode detection. Always use semantic CSS variables (`text-muted-foreground`) instead of hardcoded colors (`text-neutral-600`). Use `vue-sonner` for toasts with group selectors for styling. Inertia v2 deferred props need skeleton loading states. Use regular `<a>` tags for OAuth flows, not Inertia `<Link>`.
+> **Quick summary for agents**: Use `useChartColors` composable for Chart.js theming with MutationObserver for dark mode detection. Always use semantic CSS variables (`text-muted-foreground`) instead of hardcoded colors (`text-neutral-600`). Use `vue-sonner` for toasts with group selectors for styling. For Inertia v2 deferred props: group related props on backend with named group, use `<Deferred :data="[...]">` array on frontend, and always provide skeleton loading states. Use regular `<a>` tags for OAuth flows, not Inertia `<Link>`.
 
 ---
 
@@ -153,6 +153,54 @@ const { isDirty, processing, recentlySuccessful, save, discard } =
 - **Settings hub over direct navigation**: Central hub gives overview of account state. Users see at a glance what needs attention (unverified email, 2FA disabled).
 - **Status indicators with semantic colors**: Emerald for enabled/good, amber for warning, sky for info - follows established UX patterns. Monochromatic palette with accent colors.
 - **Form-based file download over fetch**: Using hidden form submission triggers browser's native download handling. Avoids blob handling and memory issues for large exports.
+
+---
+
+## Inertia v2 Deferred Props: Infinite Loading Fix
+
+### What went wrong?
+- Dashboard displayed infinite loading shimmer even though data queries worked correctly
+- Initial implementation used separate `Inertia::defer()` calls without grouping, resulting in multiple parallel requests
+- Frontend `<Deferred>` component was waiting for props that weren't arriving in the expected format
+- The disconnect between backend groups and frontend prop arrays caused the loading state to never resolve
+
+### What went well?
+- Tinker testing confirmed the queries themselves work correctly - problem was isolated to Inertia's deferred loading mechanism
+- Grouping all deferred props into a single group ('dashboard') ensures they all load in one follow-up request
+- Using `<Deferred :data="['summary', 'commitsOverTime', 'commitTypeDistribution']">` with array of props matches exactly what the backend sends
+- Loading skeletons in fallback template provide good UX during the brief load time
+
+### Why we chose this direction
+- **Single group over separate requests**: Grouping related props means one network request instead of multiple. For dashboard data that's rendered together, this reduces latency and complexity.
+- **Named group over default**: Using explicit group name 'dashboard' makes the code self-documenting and allows future props to be added to the same load sequence.
+- **Array in Deferred component**: The `<Deferred :data="[...]">` syntax waits for ALL listed props before rendering - exactly what we need for a dashboard where partial data would look broken.
+- **Skeleton fallback matching layout**: Fallback template mirrors the actual content structure so there's no layout shift when data loads.
+
+### Code Pattern
+```php
+// Controller - group related deferred props
+return Inertia::render('Dashboard', [
+    'summary' => Inertia::defer(
+        fn () => (new DashboardSummaryQuery($user, $startDate, $endDate))->get(),
+        'dashboard',  // Group name - all props in same group load together
+    ),
+    'commitsOverTime' => Inertia::defer(
+        fn () => (new CommitsOverTimeQuery($user, $startDate, $endDate))->get(),
+        'dashboard',
+    ),
+    // ... more props in same group
+]);
+```
+
+```vue
+<!-- Vue - wait for all props in array -->
+<Deferred :data="['summary', 'commitsOverTime', 'commitTypeDistribution']">
+    <template #fallback>
+        <!-- Skeleton loading states -->
+    </template>
+    <!-- Actual content renders when ALL props are ready -->
+</Deferred>
+```
 
 ---
 
