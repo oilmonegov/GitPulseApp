@@ -1,0 +1,94 @@
+# CODEOWNERS - Automatic PR Review Assignments
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+#
+# These owners will be requested for review when someone opens a pull request
+# that modifies code that they own. Order matters - later matches override earlier.
+
+# Default owners for everything in the repo
+* @chux
+
+# ============================================
+# Backend (PHP/Laravel)
+# ============================================
+
+# Core application code
+/app/ @chux
+
+# Database migrations and seeders (require careful review)
+/database/migrations/ @chux
+/database/seeders/ @chux
+
+# Configuration files (security-sensitive)
+/config/ @chux
+
+# Routes
+/routes/ @chux
+
+# ============================================
+# Frontend (Vue/TypeScript)
+# ============================================
+
+# Frontend components and pages
+/resources/js/ @chux
+
+# Styles
+/resources/css/ @chux
+
+# ============================================
+# Infrastructure & DevOps
+# ============================================
+
+# CI/CD workflows
+/.github/workflows/ @chux
+
+# Docker configuration
+/docker/ @chux
+docker-compose*.yml @chux
+Dockerfile* @chux
+
+# ============================================
+# Critical Configuration (Require Extra Review)
+# ============================================
+
+# Security-sensitive files
+.env.example @chux
+/config/auth.php @chux
+/config/services.php @chux
+/config/sanctum.php @chux
+
+# Build configuration
+composer.json @chux
+composer.lock @chux
+package.json @chux
+package-lock.json @chux
+vite.config.ts @chux
+tsconfig.json @chux
+
+# Code quality configuration
+phpstan.neon @chux
+rector.php @chux
+pint.json @chux
+eslint.config.js @chux
+
+# Git hooks
+/.husky/ @chux
+
+# ============================================
+# Testing
+# ============================================
+
+# All tests
+/tests/ @chux
+
+# Test configuration
+phpunit.xml @chux
+/tests/Pest.php @chux
+
+# ============================================
+# Documentation
+# ============================================
+
+# Project documentation
+/docs/ @chux
+README.md @chux
+CLAUDE.md @chux

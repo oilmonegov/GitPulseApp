@@ -2,8 +2,11 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Settings\DataManagementController;
+use App\Http\Controllers\Settings\NotificationSettingsController;
 use App\Http\Controllers\Settings\PasswordController;
 use App\Http\Controllers\Settings\ProfileController;
+use App\Http\Controllers\Settings\SettingsController;
 use App\Http\Controllers\Settings\TwoFactorAuthenticationController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -19,7 +22,7 @@ use Inertia\Inertia;
 */
 
 Route::middleware(['auth'])->group(function (): void {
-    Route::redirect('settings', '/settings/profile');
+    Route::get('settings', [SettingsController::class, 'index'])->name('settings.index');
 
     Route::get('settings/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('settings/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -38,4 +41,14 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
 
     Route::get('settings/two-factor', [TwoFactorAuthenticationController::class, 'show'])
         ->name('two-factor.show');
+
+    Route::get('settings/notifications', [NotificationSettingsController::class, 'edit'])
+        ->name('notifications.edit');
+    Route::patch('settings/notifications', [NotificationSettingsController::class, 'update'])
+        ->name('notifications.update');
+
+    Route::get('settings/data', [DataManagementController::class, 'index'])
+        ->name('data.index');
+    Route::post('settings/data/export', [DataManagementController::class, 'export'])
+        ->name('data.export');
 });

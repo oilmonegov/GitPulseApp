@@ -4,6 +4,68 @@ A living document capturing decisions, reasoning, and lessons from GitPulse deve
 
 ---
 
+## Enhanced User Settings Hub
+
+### What went wrong?
+- Pre-push hooks ran PHPStan which found type issues with `$user->preferences` returning mixed - needed explicit type checks and casts
+- ESLint flagged computed functions without default returns in switch statements - TypeScript was happy but ESLint's `vue/return-in-computed-property` rule requires explicit defaults
+- Unused `router` import in Data.vue was caught by ESLint - leftover from initial implementation approach
+
+### What went well?
+- SettingCard component with status indicators provides visual feedback at a glance - users can see GitHub connection status, 2FA state, etc. without navigating
+- Switch component using reka-ui integrates cleanly with Vue reactivity - `@update:checked` emits work seamlessly with `router.patch()`
+- SettingSection/SettingRow pattern creates consistent visual hierarchy - new settings pages can follow the established pattern
+- ExportUserDataAction handles both JSON and CSV formats cleanly - match expression keeps the logic readable
+- Weekly digest job uses cursor() for memory-efficient iteration - handles large user bases without loading all into memory
+
+### Why we chose this direction
+- **Settings hub over direct navigation**: Central hub gives overview of account state. Users see at a glance what needs attention (unverified email, 2FA disabled).
+- **Status indicators with semantic colors**: Emerald for enabled/good, amber for warning, sky for info - follows established UX patterns. Monochromatic palette with accent colors.
+- **User preferences as JSON column**: Flexible schema for notification prefs, theme, etc. Avoids migration for each new preference. `array_replace_recursive` handles nested merges.
+- **Form-based file download over fetch**: Using hidden form submission triggers browser's native download handling. Avoids blob handling and memory issues for large exports.
+- **Scheduled job over user-triggered digest**: Weekly digest runs Monday 9am automatically. Users opt-in via toggle, don't have to remember to request it.
+- **Cursor over chunk for user iteration**: `cursor()` uses a generator, keeping memory constant. Better than `chunk()` for simple iteration without batch processing needs.
+
+---
+
+## Development Lifecycle & Quality Gates
+
+### What went wrong?
+- Post-commit hooks can only remind, not block - the commit has already happened. Had to move lessons enforcement to pre-push instead.
+- Git hooks in `.git/hooks/` are not the same as Husky hooks - Husky uses `core.hooksPath` to redirect to `.husky/_`
+- Browser tests existed but weren't running in CI - discovered during the audit that 13 browser tests were being skipped
+- No dependency vulnerability scanning was automated - `composer audit` and `npm audit` were available but not in CI pipeline
+- No Dependabot configuration meant dependencies could become stale with known vulnerabilities
+
+### What went well?
+- Comprehensive hook coverage now: pre-commit (lint), commit-msg (conventional), post-commit (remind), post-merge (deps), post-checkout (migrations), pre-push (all quality gates)
+- Pre-push now runs 5 checks: branch protection, lessons learned, PHPStan, tests, security audit
+- Dependabot configured with grouped updates - Laravel ecosystem updates together, dev dependencies together
+- CODEOWNERS ensures automatic review assignments by file path
+- Issue templates standardize bug reports and feature requests
+- PR template includes comprehensive checklist preventing common oversights
+
+### Why we chose this direction
+- **Pre-push over pre-commit for heavy checks**: Running PHPStan + full test suite on every commit would slow development. Pre-push is the right balance - catches issues before they reach remote.
+- **Lessons learned blocking**: Documentation debt accumulates silently. Making it blocking for `feat|fix|refactor|perf` commits ensures knowledge capture happens when context is fresh.
+- **Security audit as warning, not blocking**: Dependencies may have vulnerabilities without available patches. Blocking would prevent all work. Warning raises awareness.
+- **Grouped Dependabot updates**: Individual PRs for each dependency creates noise. Grouping (Laravel, Vue, dev-tooling) reduces PR volume while maintaining update frequency.
+- **Post-checkout over manual reminders**: Developers forget to run `composer install` after switching branches. Automated detection and prompting prevents "it works on my machine" issues.
+- **CODEOWNERS by path**: Different parts of the codebase have different owners/experts. Path-based assignment ensures the right people review the right code.
+- **Issue templates with required fields**: Free-form issues lack crucial debugging info. Templates guide reporters to provide environment, steps to reproduce, expected vs actual behavior.
+
+### Code Pattern
+```bash
+# Pre-push quality gate flow
+1. Branch protection check (blocking)
+2. Lessons learned check (blocking for significant commits)
+3. PHPStan static analysis (blocking)
+4. Full test suite (blocking)
+5. Security audit (warning only)
+```
+
+---
+
 ## Sprint 5: Chart.js Dark Mode Fix
 
 ### What went wrong?

@@ -1,0 +1,70 @@
+#!/bin/sh
+
+# Post-merge hook: Check for dependency changes and remind to update
+# This runs after a successful git pull or merge
+
+echo ""
+echo "=========================================="
+echo "  Post-Merge Checks"
+echo "=========================================="
+
+# Track if any updates are needed
+needs_composer=false
+needs_npm=false
+needs_migration=false
+
+# Check if composer.lock changed
+if git diff-tree -r --name-only ORIG_HEAD HEAD | grep -q "composer.lock"; then
+    needs_composer=true
+fi
+
+# Check if package-lock.json changed
+if git diff-tree -r --name-only ORIG_HEAD HEAD | grep -q "package-lock.json"; then
+    needs_npm=true
+fi
+
+# Check if new migrations were added
+if git diff-tree -r --name-only ORIG_HEAD HEAD | grep -q "database/migrations/"; then
+    needs_migration=true
+fi
+
+# Display recommendations
+if [ "$needs_composer" = true ] || [ "$needs_npm" = true ] || [ "$needs_migration" = true ]; then
+    echo ""
+    echo "  Changes detected that may require action:"
+    echo ""
+
+    if [ "$needs_composer" = true ]; then
+        echo "  [PHP] composer.lock changed"
+        echo "        Run: composer install"
+        echo ""
+    fi
+
+    if [ "$needs_npm" = true ]; then
+        echo "  [JS]  package-lock.json changed"
+        echo "        Run: npm install"
+        echo ""
+    fi
+
+    if [ "$needs_migration" = true ]; then
+        echo "  [DB]  New migrations detected"
+        echo "        Run: php artisan migrate"
+        echo ""
+    fi
+
+    echo "=========================================="
+    echo ""
+
+    # Offer to run updates automatically
+    echo "  Quick command to run all updates:"
+    echo "  composer install && npm install && php artisan migrate"
+    echo ""
+else
+    echo ""
+    echo "  No dependency or migration changes detected."
+    echo "  You're good to go!"
+    echo ""
+fi
+
+# Always exit successfully (non-blocking hook)
+exit 0
