@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3';
+import { Palette } from 'lucide-vue-next';
 
 import AppearanceTabs from '@/components/AppearanceTabs.vue';
 import HeadingSmall from '@/components/HeadingSmall.vue';
+import { SettingSection } from '@/components/settings';
 import AppLayout from '@/layouts/AppLayout.vue';
 import SettingsLayout from '@/layouts/settings/Layout.vue';
 import { edit } from '@/routes/appearance';
@@ -23,12 +25,21 @@ const breadcrumbItems: BreadcrumbItem[] = [
         <h1 class="sr-only">Appearance Settings</h1>
 
         <SettingsLayout>
-            <div class="space-y-6">
+            <div class="space-y-8">
                 <HeadingSmall
                     title="Appearance settings"
                     description="Update your account's appearance settings"
                 />
-                <AppearanceTabs />
+
+                <SettingSection
+                    title="Theme"
+                    description="Choose how GitPulse looks to you"
+                    :icon="Palette"
+                >
+                    <div class="py-5">
+                        <AppearanceTabs />
+                    </div>
+                </SettingSection>
             </div>
         </SettingsLayout>
     </AppLayout>
