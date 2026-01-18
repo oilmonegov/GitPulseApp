@@ -21,7 +21,7 @@ case "$commit_type" in
         echo "  - What would you do differently?"
         echo ""
         echo "Run: /lessons (in Claude Code)"
-        echo "File: docs/lessons/LESSONS.md"
+        echo "Files: docs/lessons/*.md (choose by topic)"
         echo ""
         ;;
 esac
