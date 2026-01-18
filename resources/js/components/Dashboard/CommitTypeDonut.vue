@@ -4,6 +4,7 @@ import { computed } from 'vue';
 import { Doughnut } from 'vue-chartjs';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useChartColors } from '@/composables/useChartColors';
 import type { CommitTypeDistribution } from '@/types';
 
 import ChartSkeleton from './ChartSkeleton.vue';
@@ -19,6 +20,8 @@ const props = withDefaults(defineProps<Props>(), {
     loading: false,
 });
 
+const { colors, themeKey } = useChartColors();
+
 const chartData = computed(() => {
     if (!props.data || props.data.length === 0) {
         return {
@@ -33,7 +36,7 @@ const chartData = computed(() => {
             {
                 data: props.data.map((item) => item.count),
                 backgroundColor: props.data.map((item) => item.color),
-                borderColor: 'hsl(var(--background))',
+                borderColor: colors.value.background,
                 borderWidth: 3,
                 hoverOffset: 4,
             },
@@ -41,7 +44,7 @@ const chartData = computed(() => {
     };
 });
 
-const chartOptions = {
+const chartOptions = computed(() => ({
     responsive: true,
     maintainAspectRatio: false,
     cutout: '65%',
@@ -50,10 +53,10 @@ const chartOptions = {
             display: false,
         },
         tooltip: {
-            backgroundColor: 'hsl(var(--popover))',
-            titleColor: 'hsl(var(--popover-foreground))',
-            bodyColor: 'hsl(var(--popover-foreground))',
-            borderColor: 'hsl(var(--border))',
+            backgroundColor: colors.value.popover,
+            titleColor: colors.value.popoverForeground,
+            bodyColor: colors.value.popoverForeground,
+            borderColor: colors.value.border,
             borderWidth: 1,
             cornerRadius: 8,
             padding: 12,
@@ -65,7 +68,7 @@ const chartOptions = {
             },
         },
     },
-};
+}));
 
 const totalCommits = computed(() => {
     if (!props.data) return 0;
@@ -97,7 +100,11 @@ const hasData = computed(() => {
             </template>
             <template v-else>
                 <div class="relative h-[200px]">
-                    <Doughnut :data="chartData" :options="chartOptions" />
+                    <Doughnut
+                        :key="themeKey"
+                        :data="chartData"
+                        :options="chartOptions"
+                    />
                     <div
                         class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center"
                     >

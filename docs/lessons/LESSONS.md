@@ -4,6 +4,41 @@ A living document capturing decisions, reasoning, and lessons from GitPulse deve
 
 ---
 
+## Sprint 5: Chart.js Dark Mode Fix
+
+### What went wrong?
+- Chart.js renders to canvas and evaluates CSS custom properties like `hsl(var(--primary))` once at render time
+- When theme switches to dark mode, charts remained with light mode colors (black on black text)
+- CSS variables are strings passed to the canvas context - they don't dynamically update when the theme changes
+- Tooltips, grid lines, and axis labels were all invisible in dark mode
+
+### What went well?
+- Created `useChartColors` composable that reads computed CSS values and reacts to theme changes
+- MutationObserver pattern cleanly detects when `.dark` class is added/removed from document root
+- Using Vue's `:key` prop with a `themeKey` counter forces clean chart re-render on theme change
+- Solution is reusable for any future Chart.js components
+
+### Why we chose this direction
+- **Composable over inline fixes**: Centralized color logic in `useChartColors.ts` means all charts get the same treatment. Adding dark mode to new charts is one import.
+- **MutationObserver over watch**: Theme changes via `.dark` class on `<html>`. MutationObserver is the browser-native way to detect attribute changes on elements outside Vue's reactivity.
+- **Key-based re-render over chart.update()**: Chart.js `update()` method doesn't reliably refresh all visual properties. Using Vue's key mechanism guarantees a clean slate.
+- **getComputedStyle over parsing CSS**: Reading computed values ensures we get the actual resolved color, accounting for any CSS specificity or overrides.
+- **requestAnimationFrame delay**: CSS variables need a tick to update after class change. RAF ensures we read the new values, not stale ones.
+
+### Code Pattern
+```typescript
+// composables/useChartColors.ts
+const { colors, themeKey } = useChartColors();
+
+// In template - key forces re-render when theme changes
+<Line :key="themeKey" :data="chartData" :options="chartOptions" />
+
+// Colors are reactive - use in computed chart options
+borderColor: colors.value.primary
+```
+
+---
+
 ## Sprint 5: Analytics Dashboard
 
 ### What went wrong?
