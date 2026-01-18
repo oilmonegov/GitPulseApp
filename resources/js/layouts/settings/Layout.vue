@@ -58,7 +58,7 @@ const { urlIsActive } = useActiveUrl();
 </script>
 
 <template>
-    <div class="min-h-full px-4 py-8 lg:px-6">
+    <div class="px-4 py-8 lg:px-6">
         <!-- Editorial header -->
         <header class="mb-10">
             <div class="flex items-center gap-3 text-muted-foreground">
@@ -78,10 +78,12 @@ const { urlIsActive } = useActiveUrl();
         </header>
 
         <div class="flex flex-col gap-8 lg:flex-row lg:gap-12">
-            <!-- Refined sidebar navigation -->
-            <aside class="w-full shrink-0 lg:w-56">
+            <!-- Refined sidebar navigation - sticky with custom scrollbar -->
+            <aside
+                class="w-full shrink-0 lg:sticky lg:top-4 lg:h-fit lg:max-h-[calc(100vh-6rem)] lg:w-56 lg:self-start"
+            >
                 <nav
-                    class="relative flex flex-row gap-1 overflow-x-auto pb-2 lg:flex-col lg:gap-0.5 lg:overflow-x-visible lg:pb-0"
+                    class="settings-sidebar-scroll relative flex flex-row gap-1 overflow-x-auto pb-2 lg:flex-col lg:gap-0.5 lg:overflow-x-visible lg:overflow-y-auto lg:pr-2 lg:pb-0"
                     aria-label="Settings navigation"
                 >
                     <!-- Decorative sidebar accent (desktop only) -->

@@ -463,6 +463,25 @@ const { isDirty, processing, recentlySuccessful, save, discard } =
 
 ---
 
+## Settings Page: Sticky Sidebar & Custom Scrollbar
+
+### What went wrong?
+- Nothing significant - straightforward CSS enhancement
+
+### What went well?
+- Sticky sidebar keeps navigation visible when scrolling long settings content
+- Custom scrollbar with gradient thumb matches brand orange color (`hsl(32 95% 55%)`)
+- Dark mode scrollbar colors properly use CSS class targeting (`.dark .settings-sidebar-scroll`)
+- Removing `min-h-full` constraint fixed unnecessary layout forcing
+
+### Why we chose this direction
+- **Sticky over fixed**: `position: sticky` respects document flow and works within flex containers. Fixed positioning would require manual offset calculations and could overlap content.
+- **max-height with calc()**: `lg:max-h-[calc(100vh-6rem)]` ensures sidebar never extends beyond viewport while leaving room for header/padding. Enables scroll when many nav items exist.
+- **Custom scrollbar in utilities layer**: Placed in `@layer utilities` so Tailwind's `scrollbar-thin` and other scrollbar utilities can coexist. Named class `settings-sidebar-scroll` is specific enough to avoid conflicts.
+- **Gradient scrollbar thumb**: Subtle gradient adds depth without being distracting. Matches the accent color used throughout the app for interactive elements.
+
+---
+
 ## Template for New Entries
 
 ```markdown
