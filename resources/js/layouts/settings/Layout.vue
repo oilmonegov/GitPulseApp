@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
+import { Bell, Database, Lock, Sun, User } from 'lucide-vue-next';
 
 import Heading from '@/components/Heading.vue';
 import { Button } from '@/components/ui/button';
@@ -7,6 +8,8 @@ import { Separator } from '@/components/ui/separator';
 import { useActiveUrl } from '@/composables/useActiveUrl';
 import { toUrl } from '@/lib/utils';
 import { edit as editAppearance } from '@/routes/appearance';
+import { index as dataIndex } from '@/routes/data';
+import { edit as editNotifications } from '@/routes/notifications';
 import { edit as editProfile } from '@/routes/profile';
 import { show } from '@/routes/two-factor';
 import { edit as editPassword } from '@/routes/user-password';
@@ -16,18 +19,32 @@ const sidebarNavItems: NavItem[] = [
     {
         title: 'Profile',
         href: editProfile(),
+        icon: User,
     },
     {
         title: 'Password',
         href: editPassword(),
+        icon: Lock,
     },
     {
         title: 'Two-Factor Auth',
         href: show(),
+        icon: Lock,
+    },
+    {
+        title: 'Notifications',
+        href: editNotifications(),
+        icon: Bell,
     },
     {
         title: 'Appearance',
         href: editAppearance(),
+        icon: Sun,
+    },
+    {
+        title: 'Data & Privacy',
+        href: dataIndex(),
+        icon: Database,
     },
 ];
 
