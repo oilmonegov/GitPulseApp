@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if echo \"$CLAUDE_TOOL_INPUT\" | grep -q 'git commit'; then echo 'LESSONS_PROMPT: Consider running /lessons to document what you learned'; fi"
+          }
+        ]
+      }
+    ]
+  }
+}

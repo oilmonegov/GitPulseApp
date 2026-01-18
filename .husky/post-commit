@@ -1,0 +1,27 @@
+#!/bin/sh
+
+# Post-commit hook: Remind to document lessons learned
+# This runs after every successful commit
+
+# Get the commit message
+commit_msg=$(git log -1 --pretty=%B)
+commit_type=$(echo "$commit_msg" | head -n1 | cut -d':' -f1 | cut -d'(' -f1)
+
+# Only remind for significant commits (features, fixes, refactors)
+case "$commit_type" in
+    feat|fix|refactor|perf)
+        echo ""
+        echo "=========================================="
+        echo "  Commit successful!"
+        echo "=========================================="
+        echo ""
+        echo "Consider documenting lessons learned:"
+        echo "  - What challenges did you face?"
+        echo "  - What solutions worked well?"
+        echo "  - What would you do differently?"
+        echo ""
+        echo "Run: /lessons (in Claude Code)"
+        echo "File: docs/lessons/LESSONS.md"
+        echo ""
+        ;;
+esac
