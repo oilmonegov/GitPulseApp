@@ -745,6 +745,90 @@ Architecture tests in `tests/Feature/ArchitectureTest.php` enforce coding standa
 
 **Always run architecture tests after structural changes**: `php artisan test tests/Feature/ArchitectureTest.php`
 
+=== development lifecycle ===
+
+## Git Hooks (Husky)
+
+This project uses Husky for Git hooks. All hooks are in `.husky/` directory.
+
+### Hook Summary
+
+| Hook | Purpose | Blocking |
+|------|---------|----------|
+| `pre-commit` | Runs lint-staged (Pint, ESLint, Prettier) | Yes |
+| `commit-msg` | Enforces Conventional Commits format | Yes |
+| `post-commit` | Reminds to document lessons learned | No |
+| `post-merge` | Reminds to run dependency updates | No |
+| `post-checkout` | Detects dependency/migration changes between branches | No |
+| `pre-push` | Runs all quality gates before push | Yes |
+
+### Pre-Push Quality Gates
+
+The pre-push hook runs 5 checks in order:
+
+1. **Branch Protection** - Blocks direct pushes to main/master/production
+2. **Lessons Learned** - Blocks if `feat|fix|refactor|perf` commits lack LESSONS.md updates
+3. **Static Analysis** - PHPStan level 8 must pass
+4. **Test Suite** - All tests must pass
+5. **Security Audit** - Runs `composer audit` + `npm audit` (warning only)
+
+### Conventional Commits
+
+All commits must follow the format: `type(scope): description`
+
+Valid types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`
+
+### Lessons Learned Requirement
+
+For significant commits (`feat`, `fix`, `refactor`, `perf`), you must update `docs/lessons/LESSONS.md` before pushing. Use the `/lessons` skill or manually document:
+- What went wrong?
+- What went well?
+- Why you chose this direction
+
+## CI/CD Pipeline
+
+GitHub Actions runs on push/PR to main/develop:
+
+| Job | Purpose | Blocking |
+|-----|---------|----------|
+| `security` | `composer audit` + `npm audit` | Yes |
+| `static-analysis` | PHPStan level 8 | Yes |
+| `code-style` | Pint test mode | Yes |
+| `frontend` | TypeScript, ESLint, Vite build | Yes |
+| `tests` | Parallel tests with 70% coverage minimum | Yes |
+
+All jobs must pass before merge.
+
+## Dependency Management
+
+### Dependabot
+
+Dependabot is configured for weekly updates (Mondays 09:00 UTC):
+- **Composer**: Groups Laravel packages, dev dependencies separately
+- **NPM**: Groups Vue ecosystem, dev tooling separately
+- **GitHub Actions**: Updates action versions
+
+### Security Audits
+
+Run locally before committing:
+```bash
+composer audit          # PHP dependencies
+npm audit               # JavaScript dependencies
+```
+
+## Code Review
+
+### CODEOWNERS
+
+`.github/CODEOWNERS` assigns automatic reviewers by file path. Critical files (config, migrations, hooks) require explicit review.
+
+### PR Template
+
+All PRs use `.github/PULL_REQUEST_TEMPLATE.md` which includes:
+- Change type classification
+- Checklist for code quality, testing, security
+- Related issues linking
+
 === frontend guidelines ===
 
 ## UI/UX Design Principles

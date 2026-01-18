@@ -1,0 +1,77 @@
+version: 2
+
+updates:
+  # PHP/Composer dependencies
+  - package-ecosystem: "composer"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "chore(deps)"
+    labels:
+      - "dependencies"
+      - "php"
+    groups:
+      # Group Laravel ecosystem updates together
+      laravel:
+        patterns:
+          - "laravel/*"
+          - "illuminate/*"
+      # Group development dependencies
+      dev-dependencies:
+        dependency-type: "development"
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "laravel/*"
+          - "illuminate/*"
+
+  # NPM/JavaScript dependencies
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "chore(deps)"
+    labels:
+      - "dependencies"
+      - "javascript"
+    groups:
+      # Group Vue ecosystem updates
+      vue:
+        patterns:
+          - "vue"
+          - "@vue/*"
+          - "@inertiajs/*"
+      # Group development tooling
+      dev-tooling:
+        dependency-type: "development"
+        patterns:
+          - "eslint*"
+          - "prettier*"
+          - "typescript*"
+          - "@types/*"
+          - "vite*"
+          - "@vitejs/*"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "UTC"
+    commit-message:
+      prefix: "chore(ci)"
+    labels:
+      - "dependencies"
+      - "ci"

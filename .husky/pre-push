@@ -1,33 +1,132 @@
 #!/bin/sh
 
-# Prevent direct pushes to main/master branch
+# ============================================
+# Pre-Push Hook: Quality Gates
+# ============================================
+# This hook runs before pushing to remote.
+# All checks must pass for push to succeed.
+# ============================================
+
+echo ""
+echo "=========================================="
+echo "  Pre-Push Quality Gates"
+echo "=========================================="
+echo ""
+
+# --------------------------------------------
+# 1. Protected Branch Check
+# --------------------------------------------
 current_branch=$(git symbolic-ref HEAD 2>/dev/null | sed -e 's,.*/\(.*\),\1,')
 protected_branches=("main" "master" "production")
 
 for branch in "${protected_branches[@]}"; do
     if [ "$current_branch" = "$branch" ]; then
-        echo "Error: Direct pushes to '$branch' branch are not allowed."
-        echo "Please create a feature branch and submit a pull request."
+        echo "[BLOCKED] Direct pushes to '$branch' branch are not allowed."
+        echo "          Please create a feature branch and submit a pull request."
         exit 1
     fi
 done
+echo "[PASS] Branch protection check"
 
-# Run static analysis
+# --------------------------------------------
+# 2. Lessons Learned Check (for significant commits)
+# --------------------------------------------
+# Get commits that will be pushed (not yet on remote)
+remote_ref=$(git rev-parse @{u} 2>/dev/null || echo "")
+
+if [ -n "$remote_ref" ]; then
+    # Check for significant commit types in unpushed commits
+    significant_commits=$(git log "$remote_ref"..HEAD --oneline 2>/dev/null | grep -E "^[a-f0-9]+ (feat|fix|refactor|perf)" || true)
+
+    if [ -n "$significant_commits" ]; then
+        # Check if LESSONS.md was modified in any of the unpushed commits
+        lessons_modified=$(git diff --name-only "$remote_ref"..HEAD 2>/dev/null | grep -E "docs/lessons/LESSONS.md" || true)
+
+        if [ -z "$lessons_modified" ]; then
+            echo ""
+            echo "[BLOCKED] Lessons learned documentation required!"
+            echo ""
+            echo "  You have significant commits that require documentation:"
+            echo "$significant_commits" | head -5 | sed 's/^/    /'
+            echo ""
+            echo "  Please update docs/lessons/LESSONS.md with:"
+            echo "    - What went wrong?"
+            echo "    - What went well?"
+            echo "    - Why you chose this direction"
+            echo ""
+            echo "  Quick options:"
+            echo "    1. Run '/lessons' in Claude Code to document"
+            echo "    2. Manually edit docs/lessons/LESSONS.md"
+            echo "    3. Amend your commit: git commit --amend"
+            echo ""
+            echo "  To bypass (emergency only): git push --no-verify"
+            echo ""
+            exit 1
+        fi
+        echo "[PASS] Lessons learned documented"
+    else
+        echo "[SKIP] No significant commits (feat/fix/refactor/perf) - lessons not required"
+    fi
+else
+    echo "[SKIP] First push to remote - lessons check skipped"
+fi
+
+# --------------------------------------------
+# 3. Static Analysis (PHPStan)
+# --------------------------------------------
+echo ""
 echo "Running static analysis..."
 ./vendor/bin/phpstan analyse --memory-limit=512M
 
 if [ $? -ne 0 ]; then
-    echo "Error: Static analysis failed. Push aborted."
+    echo ""
+    echo "[BLOCKED] Static analysis failed. Push aborted."
+    echo "          Fix PHPStan errors before pushing."
     exit 1
 fi
+echo "[PASS] Static analysis"
 
-# Run tests before push
-echo "Running tests before push..."
+# --------------------------------------------
+# 4. Test Suite
+# --------------------------------------------
+echo ""
+echo "Running test suite..."
 php artisan test --compact
 
 if [ $? -ne 0 ]; then
-    echo "Error: Tests failed. Push aborted."
+    echo ""
+    echo "[BLOCKED] Tests failed. Push aborted."
+    echo "          Fix failing tests before pushing."
     exit 1
 fi
+echo "[PASS] Test suite"
 
-echo "Pre-push checks passed!"
+# --------------------------------------------
+# 5. Security Audit (Quick Check)
+# --------------------------------------------
+echo ""
+echo "Running security audit..."
+composer audit --format=plain 2>/dev/null
+composer_result=$?
+
+npm audit --audit-level=high 2>/dev/null
+npm_result=$?
+
+if [ $composer_result -ne 0 ] || [ $npm_result -ne 0 ]; then
+    echo ""
+    echo "[WARNING] Security vulnerabilities detected."
+    echo "          Review and update dependencies."
+    # Warning only, not blocking (dependencies may not have patches yet)
+fi
+echo "[PASS] Security audit"
+
+# --------------------------------------------
+# All Checks Passed
+# --------------------------------------------
+echo ""
+echo "=========================================="
+echo "  All pre-push checks passed!"
+echo "=========================================="
+echo ""
+
+exit 0

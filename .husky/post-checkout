@@ -1,0 +1,96 @@
+#!/bin/sh
+
+# Post-checkout hook: Check for changes that may require action
+# This runs after git checkout, git switch, or git clone
+#
+# Arguments:
+#   $1 - ref of previous HEAD
+#   $2 - ref of new HEAD
+#   $3 - flag (1 = branch checkout, 0 = file checkout)
+
+prev_head=$1
+new_head=$2
+checkout_type=$3
+
+# Only run on branch checkouts, not file checkouts
+if [ "$checkout_type" != "1" ]; then
+    exit 0
+fi
+
+# Skip if this is a fresh clone (no previous HEAD)
+if [ "$prev_head" = "0000000000000000000000000000000000000000" ]; then
+    exit 0
+fi
+
+echo ""
+echo "=========================================="
+echo "  Branch Checkout Detected"
+echo "=========================================="
+
+# Track what changed
+composer_changed=false
+npm_changed=false
+migrations_changed=false
+env_changed=false
+
+# Check for changes between old and new HEAD
+changed_files=$(git diff --name-only "$prev_head" "$new_head" 2>/dev/null)
+
+if echo "$changed_files" | grep -q "composer.lock"; then
+    composer_changed=true
+fi
+
+if echo "$changed_files" | grep -q "package-lock.json"; then
+    npm_changed=true
+fi
+
+if echo "$changed_files" | grep -q "database/migrations/"; then
+    migrations_changed=true
+fi
+
+if echo "$changed_files" | grep -q ".env.example"; then
+    env_changed=true
+fi
+
+# Display recommendations
+if [ "$composer_changed" = true ] || [ "$npm_changed" = true ] || [ "$migrations_changed" = true ] || [ "$env_changed" = true ]; then
+    echo ""
+    echo "  Changes detected between branches:"
+    echo ""
+
+    if [ "$composer_changed" = true ]; then
+        echo "  [PHP]  composer.lock differs"
+        echo "         Run: composer install"
+        echo ""
+    fi
+
+    if [ "$npm_changed" = true ]; then
+        echo "  [JS]   package-lock.json differs"
+        echo "         Run: npm install"
+        echo ""
+    fi
+
+    if [ "$migrations_changed" = true ]; then
+        echo "  [DB]   Migration files differ"
+        echo "         Run: php artisan migrate:fresh --seed (dev)"
+        echo "         Or:  php artisan migrate (if safe)"
+        echo ""
+    fi
+
+    if [ "$env_changed" = true ]; then
+        echo "  [ENV]  .env.example changed"
+        echo "         Check for new environment variables!"
+        echo ""
+    fi
+
+    echo "=========================================="
+    echo ""
+else
+    echo ""
+    echo "  No dependency or migration changes."
+    echo "  You're good to go!"
+    echo ""
+fi
+
+# Always exit successfully (non-blocking hook)
+exit 0
