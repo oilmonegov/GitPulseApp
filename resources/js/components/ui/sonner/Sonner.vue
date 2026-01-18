@@ -18,7 +18,7 @@ const { appearance } = useAppearance();
         v-bind="props"
         :theme="appearance === 'system' ? 'system' : appearance"
         :toast-options="{
-            classNames: {
+            classes: {
                 toast: 'group toast group-[.toaster]:border-border/60 group-[.toaster]:bg-card group-[.toaster]:text-foreground group-[.toaster]:shadow-lg group-[.toaster]:rounded-xl',
                 title: 'group-[.toast]:text-foreground group-[.toast]:font-medium',
                 description: 'group-[.toast]:text-muted-foreground',

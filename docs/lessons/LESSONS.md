@@ -416,6 +416,7 @@ docker build -t gitpulse:latest --target production .
 - Initially installed `sonner` (React version) instead of `vue-sonner` (Vue port) - had to uninstall and reinstall the correct package
 - Found multiple places using hardcoded neutral colors (`text-neutral-600`, `decoration-neutral-300`) instead of semantic CSS variables - these don't match the warm color palette in light mode
 - Some components had redundant `dark:` variants when the CSS variables already handle light/dark differences
+- Vue-sonner's `ToastOptions` type uses `classes` not `classNames` - TypeScript caught this mismatch in CI even though it worked at runtime
 
 ### What went well?
 - Vue-sonner integrates cleanly with Vue 3 - just wrap the Toaster in app.ts with `h()` function alongside the main App component
@@ -458,7 +459,7 @@ const { isDirty, processing, recentlySuccessful, save, discard } =
 1. **Always use semantic CSS variables**: `text-foreground`, `text-muted-foreground`, `bg-card`, `border-border`, etc.
 2. **Avoid hardcoded neutral/gray colors**: They clash with the warm color palette
 3. **Use `dark:` variants only when necessary**: CSS variables already handle theme switching
-4. **Toast styling via classNames prop**: Use group selectors to style toasts consistently with the design system
+4. **Toast styling via classes prop**: Use group selectors to style toasts consistently with the design system
 5. **Light mode accent**: The amber accent `hsl(32 95% 55%)` should be visible but not overwhelming in light mode - use with reduced opacity
 
 ---
