@@ -4,6 +4,7 @@ import { Bell } from 'lucide-vue-next';
 
 import HeadingSmall from '@/components/HeadingSmall.vue';
 import { SettingRow, SettingSection } from '@/components/settings';
+import { toast } from '@/components/ui/sonner';
 import { Switch } from '@/components/ui/switch';
 import AppLayout from '@/layouts/AppLayout.vue';
 import SettingsLayout from '@/layouts/settings/Layout.vue';
@@ -37,6 +38,12 @@ function updatePreference(key: string, value: boolean) {
         },
         {
             preserveScroll: true,
+            onSuccess: () => {
+                toast.success('Notification preferences updated');
+            },
+            onError: () => {
+                toast.error('Failed to update preferences');
+            },
         },
     );
 }

@@ -1,0 +1,50 @@
+# Gitleaks Configuration
+# https://github.com/gitleaks/gitleaks
+
+title = "GitPulse Gitleaks Configuration"
+
+[extend]
+# Use default gitleaks rules as base
+useDefault = true
+
+# Custom allowlist for false positives
+[allowlist]
+description = "Global allowlist"
+paths = [
+    '''\.env\.example$''',
+    '''\.env\.testing$''',
+    '''vendor/''',
+    '''node_modules/''',
+    '''storage/''',
+    '''\.github/workflows/''',
+    '''tests/''',
+    '''\.md$''',
+]
+
+# Regex patterns to ignore
+regexes = [
+    '''(?i)example|placeholder|your[-_]?|test[-_]?|fake[-_]?|dummy''',
+]
+
+# Commits to ignore (add commit hashes that are known false positives)
+commits = []
+
+# Custom rules for Laravel-specific patterns
+[[rules]]
+id = "laravel-app-key"
+description = "Laravel Application Key"
+regex = '''APP_KEY=base64:[A-Za-z0-9+/]{43}='''
+path = '''\.env$'''
+tags = ["key", "laravel"]
+
+[[rules]]
+id = "github-oauth-token"
+description = "GitHub OAuth Token"
+regex = '''(?i)(github[_-]?(?:client[_-]?secret|token|oauth[_-]?token))\s*[=:]\s*['"]?([a-zA-Z0-9_-]{20,})['"]?'''
+tags = ["oauth", "github"]
+
+[[rules]]
+id = "sentry-dsn"
+description = "Sentry DSN"
+regex = '''(?i)sentry[_-]?(?:dsn|laravel[_-]?dsn)\s*[=:]\s*['"]?https://[a-f0-9]+@[a-z0-9.]+\.ingest\.sentry\.io/[0-9]+['"]?'''
+tags = ["monitoring", "sentry"]

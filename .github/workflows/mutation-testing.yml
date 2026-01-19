@@ -1,0 +1,181 @@
+name: Mutation Testing
+
+on:
+  # Run on PRs to main (not every push to save CI resources)
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'app/**'
+      - 'tests/**'
+      - 'composer.json'
+      - 'composer.lock'
+
+  # Weekly scheduled run for full mutation analysis
+  schedule:
+    - cron: '0 4 * * 0' # Every Sunday at 4 AM UTC
+
+  # Manual trigger
+  workflow_dispatch:
+    inputs:
+      min_score:
+        description: 'Minimum mutation score threshold'
+        required: false
+        default: '70'
+      class_filter:
+        description: 'Filter mutations to specific class (e.g., App\\Models)'
+        required: false
+        default: ''
+
+concurrency:
+  group: mutation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mutation:
+    name: Pest Mutation Testing
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer:v2
+          coverage: pcov
+          extensions: mbstring, xml, ctype, iconv, intl, pdo_sqlite
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Cache Composer Dependencies
+        uses: actions/cache@v5
+        with:
+          path: vendor
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+
+      - name: Cache Mutation Results
+        uses: actions/cache@v5
+        with:
+          path: .pest/cache
+          key: mutation-${{ github.sha }}
+          restore-keys: mutation-
+
+      - name: Install PHP Dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Install Node Dependencies
+        run: npm ci
+
+      - name: Copy Environment File
+        run: cp .env.example .env
+
+      - name: Generate Application Key
+        run: php artisan key:generate
+
+      - name: Build Assets
+        run: npm run build
+
+      - name: Run Mutation Testing
+        id: mutation
+        run: |
+          MIN_SCORE="${{ github.event.inputs.min_score || '70' }}"
+          CLASS_FILTER="${{ github.event.inputs.class_filter }}"
+
+          if [ -n "$CLASS_FILTER" ]; then
+            MUTATION_CMD="php artisan test --mutate --parallel --min=${MIN_SCORE} --class=$CLASS_FILTER"
+          else
+            MUTATION_CMD="php artisan test --mutate --parallel --min=${MIN_SCORE} --everything --covered-only"
+          fi
+
+          echo "Running: $MUTATION_CMD"
+          $MUTATION_CMD
+        env:
+          DB_CONNECTION: sqlite
+          DB_DATABASE: ':memory:'
+
+      - name: Upload Mutation Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mutation-report
+          path: .pest/cache/mutation-*
+          retention-days: 14
+
+      - name: Post Summary
+        if: always()
+        run: |
+          echo "## Mutation Testing Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Minimum Score**: ${{ github.event.inputs.min_score || '70' }}%" >> $GITHUB_STEP_SUMMARY
+          echo "- **Class Filter**: ${{ github.event.inputs.class_filter || 'All covered classes' }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Mutation testing helps verify that your tests actually catch bugs." >> $GITHUB_STEP_SUMMARY
+          echo "A mutation score of 70%+ means tests catch at least 70% of potential bugs." >> $GITHUB_STEP_SUMMARY
+
+  # Quick mutation check for PRs (subset of classes)
+  mutation-quick:
+    name: Quick Mutation Check
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer:v2
+          coverage: pcov
+
+      - name: Cache Composer Dependencies
+        uses: actions/cache@v5
+        with:
+          path: vendor
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+
+      - name: Install Dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Copy Environment File
+        run: cp .env.example .env
+
+      - name: Generate Application Key
+        run: php artisan key:generate
+
+      - name: Get Changed PHP Files
+        id: changed
+        run: |
+          CHANGED_FILES=$(git diff --name-only origin/main...HEAD -- 'app/*.php' | head -5 | tr '\n' ' ')
+          echo "files=$CHANGED_FILES" >> $GITHUB_OUTPUT
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "No PHP files changed in app/"
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "Changed files: $CHANGED_FILES"
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run Quick Mutation Test
+        if: steps.changed.outputs.skip != 'true'
+        run: |
+          # Run mutation testing on critical paths only for speed
+          php artisan test --mutate --parallel --min=60 \
+            --path=app/Actions \
+            --path=app/Queries \
+            --bail
+        env:
+          DB_CONNECTION: sqlite
+          DB_DATABASE: ':memory:'

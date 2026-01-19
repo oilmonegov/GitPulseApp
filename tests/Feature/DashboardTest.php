@@ -20,7 +20,7 @@ test('authenticated users can visit the dashboard', function (): void {
     $response->assertOk();
 });
 
-test('dashboard renders with deferred props', function (): void {
+test('dashboard renders with all props', function (): void {
     $user = User::factory()->create();
     $this->actingAs($user);
 
@@ -29,13 +29,13 @@ test('dashboard renders with deferred props', function (): void {
     $response->assertInertia(
         fn (Assert $page) => $page
             ->component('Dashboard')
-            ->missing('summary')           // Deferred props not in initial response
-            ->missing('commitsOverTime')
-            ->missing('commitTypeDistribution'),
+            ->has('summary')
+            ->has('commitsOverTime')
+            ->has('commitTypeDistribution'),
     );
 });
 
-test('dashboard deferred props load summary data', function (): void {
+test('dashboard summary shows correct data', function (): void {
     $user = User::factory()->create();
     $repo = Repository::factory()->for($user)->create();
 
@@ -52,17 +52,12 @@ test('dashboard deferred props load summary data', function (): void {
 
     $response->assertInertia(
         fn (Assert $page) => $page
-            ->loadDeferredProps(
-                fn (Assert $reload) => $reload
-                    ->has(
-                        'summary',
-                        fn (Assert $summary) => $summary
-                            ->where('total_commits', 3)
-                            ->where('average_impact', fn ($value) => (float) $value === 5.0)
-                            ->where('lines_changed', 450), // (100 + 50) * 3
-                    )
-                    ->has('commitsOverTime')
-                    ->has('commitTypeDistribution'),
+            ->has(
+                'summary',
+                fn (Assert $summary) => $summary
+                    ->where('total_commits', 3)
+                    ->where('average_impact', fn ($value) => (float) $value === 5.0)
+                    ->where('lines_changed', 450), // (100 + 50) * 3
             ),
     );
 });
@@ -75,15 +70,12 @@ test('dashboard commits over time includes date range', function (): void {
 
     $response->assertInertia(
         fn (Assert $page) => $page
-            ->loadDeferredProps(
-                fn (Assert $reload) => $reload
-                    ->has(
-                        'commitsOverTime',
-                        30,
-                        fn (Assert $item) => $item
-                            ->has('date')
-                            ->has('count'),
-                    ),
+            ->has(
+                'commitsOverTime',
+                30,
+                fn (Assert $item) => $item
+                    ->has('date')
+                    ->has('count'),
             ),
     );
 });
@@ -101,17 +93,14 @@ test('dashboard commit type distribution includes required fields', function ():
 
     $response->assertInertia(
         fn (Assert $page) => $page
-            ->loadDeferredProps(
-                fn (Assert $reload) => $reload
-                    ->has(
-                        'commitTypeDistribution',
-                        1,
-                        fn (Assert $item) => $item
-                            ->has('type')
-                            ->has('label')
-                            ->has('count')
-                            ->has('color'),
-                    ),
+            ->has(
+                'commitTypeDistribution',
+                1,
+                fn (Assert $item) => $item
+                    ->has('type')
+                    ->has('label')
+                    ->has('count')
+                    ->has('color'),
             ),
     );
 });

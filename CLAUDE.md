@@ -81,16 +81,30 @@ Before implementing any significant feature, follow this strict package selectio
 - You must only create documentation files if explicitly requested by the user.
 
 ## Lessons Learned
-Before making architectural decisions, check `docs/lessons/LESSONS.md` for past decisions and their reasoning. This document captures:
-- What went wrong in previous sprints (mistakes to avoid)
-- What went well (patterns to follow)
-- Why we chose specific directions (reasoning behind decisions)
+Before making architectural decisions, check the modular lessons in `docs/lessons/` for past decisions and their reasoning. The lessons are organized thematically:
+
+| File | Topics |
+|------|--------|
+| `architecture.md` | CQRS, Actions, Queries, DTOs, Enums, Services |
+| `database.md` | Migrations, SQLite/MySQL compat, Eloquent, models |
+| `frontend.md` | Vue, Inertia, Chart.js, UI, design system, CSS |
+| `testing.md` | Pest, mutation testing, browser tests, factories |
+| `infrastructure.md` | CI/CD, Docker, monitoring, Sentry, Pennant |
+| `integrations.md` | OAuth, Socialite, Saloon, webhooks, GitHub API |
+| `git-workflow.md` | Hooks, conventional commits, releases, quality gates |
+
+See `docs/lessons/README.md` for the full index and quick reference.
 
 **When to check lessons:**
 - Before choosing between implementation approaches
 - Before creating migrations (e.g., column types)
 - Before adding new packages or patterns
 - When facing a decision that feels like it could go multiple ways
+
+**Before documenting a new lesson:**
+1. Check the relevant themed file for existing lessons on the topic
+2. If a similar lesson exists, reference it instead of duplicating
+3. Only add new entries when encountering genuinely new learnings
 
 **Update lessons after completing work** to capture new learnings for future reference.
 
@@ -780,7 +794,20 @@ Valid types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`
 
 ### Lessons Learned Requirement
 
-For significant commits (`feat`, `fix`, `refactor`, `perf`), you must update `docs/lessons/LESSONS.md` before pushing. Use the `/lessons` skill or manually document:
+For significant commits (`feat`, `fix`, `refactor`, `perf`), you must update the appropriate file in `docs/lessons/` before pushing. The pre-push hook performs smart checking - if existing lessons already cover the commit scope, no new documentation is required.
+
+**Which file to update:**
+| Work Type | File |
+|-----------|------|
+| CQRS, Actions, Queries, DTOs | `architecture.md` |
+| Database, migrations, Eloquent | `database.md` |
+| Vue, Inertia, CSS, UI | `frontend.md` |
+| Tests, Pest, mutations | `testing.md` |
+| CI/CD, Docker, monitoring | `infrastructure.md` |
+| OAuth, APIs, webhooks | `integrations.md` |
+| Git hooks, commits, workflow | `git-workflow.md` |
+
+Use the `/lessons` skill or manually document:
 - What went wrong?
 - What went well?
 - Why you chose this direction

@@ -1,0 +1,63 @@
+# Codecov Configuration
+# https://docs.codecov.com/docs/codecov-yaml
+
+codecov:
+  require_ci_to_pass: true
+
+coverage:
+  precision: 2
+  round: down
+  range: "60...90"
+
+  status:
+    project:
+      default:
+        target: 70%
+        threshold: 2%
+        if_not_found: success
+        only_pulls: true
+    patch:
+      default:
+        target: 80%
+        threshold: 5%
+        only_pulls: true
+
+parsers:
+  gcov:
+    branch_detection:
+      conditional: true
+      loop: true
+      macro: false
+      method: false
+
+comment:
+  layout: "reach,diff,flags,files,footer"
+  behavior: default
+  require_changes: true
+  require_base: false
+  require_head: true
+  hide_project_coverage: false
+
+flags:
+  unittests:
+    paths:
+      - app/
+    carryforward: true
+
+  feature:
+    paths:
+      - app/
+    carryforward: true
+
+ignore:
+  - "vendor/**/*"
+  - "node_modules/**/*"
+  - "storage/**/*"
+  - "bootstrap/cache/**/*"
+  - "tests/**/*"
+  - "database/migrations/**/*"
+  - "database/seeders/**/*"
+  - "config/**/*"
+  - "routes/**/*"
+  - "public/**/*"
+  - "resources/**/*"

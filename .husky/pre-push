@@ -39,31 +39,59 @@ if [ -n "$remote_ref" ]; then
     significant_commits=$(git log "$remote_ref"..HEAD --oneline 2>/dev/null | grep -E "^[a-f0-9]+ (feat|fix|refactor|perf)" || true)
 
     if [ -n "$significant_commits" ]; then
-        # Check if LESSONS.md was modified in any of the unpushed commits
-        lessons_modified=$(git diff --name-only "$remote_ref"..HEAD 2>/dev/null | grep -E "docs/lessons/LESSONS.md" || true)
+        # Check if any lesson file was modified in unpushed commits
+        lessons_modified=$(git diff --name-only "$remote_ref"..HEAD 2>/dev/null | grep -E "^docs/lessons/.*\.md$" || true)
 
         if [ -z "$lessons_modified" ]; then
-            echo ""
-            echo "[BLOCKED] Lessons learned documentation required!"
-            echo ""
-            echo "  You have significant commits that require documentation:"
-            echo "$significant_commits" | head -5 | sed 's/^/    /'
-            echo ""
-            echo "  Please update docs/lessons/LESSONS.md with:"
-            echo "    - What went wrong?"
-            echo "    - What went well?"
-            echo "    - Why you chose this direction"
-            echo ""
-            echo "  Quick options:"
-            echo "    1. Run '/lessons' in Claude Code to document"
-            echo "    2. Manually edit docs/lessons/LESSONS.md"
-            echo "    3. Amend your commit: git commit --amend"
-            echo ""
-            echo "  To bypass (emergency only): git push --no-verify"
-            echo ""
-            exit 1
+            # Smart check: extract scope from commits and see if existing lessons cover it
+            commit_scopes=$(git log "$remote_ref"..HEAD --format=%s 2>/dev/null | grep -oP '^\w+\(\K[^)]+' | sort -u || true)
+
+            existing_coverage=""
+            if [ -n "$commit_scopes" ]; then
+                for scope in $commit_scopes; do
+                    # Check if existing lessons mention this scope
+                    if grep -qri "$scope" docs/lessons/*.md 2>/dev/null; then
+                        existing_coverage="$existing_coverage $scope"
+                    fi
+                done
+            fi
+
+            # If all scopes have existing coverage, skip the requirement
+            if [ -n "$commit_scopes" ] && [ -n "$existing_coverage" ]; then
+                echo "[SKIP] Existing lessons cover scope(s):$existing_coverage"
+            else
+                echo ""
+                echo "[BLOCKED] Lessons learned documentation required!"
+                echo ""
+                echo "  You have significant commits that require documentation:"
+                echo "$significant_commits" | head -5 | sed 's/^/    /'
+                echo ""
+                echo "  Please update the appropriate file in docs/lessons/:"
+                echo "    - architecture.md  (CQRS, Actions, Queries, DTOs)"
+                echo "    - database.md      (migrations, Eloquent, models)"
+                echo "    - frontend.md      (Vue, Inertia, CSS, UI)"
+                echo "    - testing.md       (Pest, mutations, browser tests)"
+                echo "    - infrastructure.md (CI/CD, Docker, monitoring)"
+                echo "    - integrations.md  (OAuth, Saloon, webhooks)"
+                echo "    - git-workflow.md  (hooks, commits, releases)"
+                echo ""
+                echo "  Document:"
+                echo "    - What went wrong?"
+                echo "    - What went well?"
+                echo "    - Why you chose this direction"
+                echo ""
+                echo "  Quick options:"
+                echo "    1. Run '/lessons' in Claude Code to document"
+                echo "    2. Manually edit the appropriate lesson file"
+                echo "    3. Amend your commit: git commit --amend"
+                echo ""
+                echo "  To bypass (emergency only): git push --no-verify"
+                echo ""
+                exit 1
+            fi
+        else
+            echo "[PASS] Lessons learned documented in: $(echo $lessons_modified | tr '\n' ' ')"
         fi
-        echo "[PASS] Lessons learned documented"
     else
         echo "[SKIP] No significant commits (feat/fix/refactor/perf) - lessons not required"
     fi

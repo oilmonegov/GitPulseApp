@@ -11,6 +11,7 @@ use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+use Sentry\Laravel\Integration;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -22,6 +23,10 @@ return Application::configure(basePath: dirname(__DIR__))
             // Register webhook routes (excluded from web middleware)
             Route::middleware('api')
                 ->group(base_path('routes/webhooks.php'));
+
+            // Register health check routes (no auth required for monitoring)
+            Route::middleware('web')
+                ->group(base_path('routes/health.php'));
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
@@ -39,6 +44,9 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        // Report exceptions to Sentry
+        Integration::handles($exceptions);
+
         // Handle Inertia requests with proper error pages
         $exceptions->respond(function ($response, $exception, Request $request) {
             // For Inertia requests, render error pages via Inertia

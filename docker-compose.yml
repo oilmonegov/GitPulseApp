@@ -1,0 +1,232 @@
+# Docker Compose for GitPulse Local Development
+#
+# Usage:
+#   docker compose up -d          # Start all services
+#   docker compose down           # Stop all services
+#   docker compose logs -f app    # View application logs
+#   docker compose exec app sh    # Shell into application container
+#
+# Services:
+#   - app:      Laravel application (PHP-FPM + Nginx)
+#   - mysql:    MySQL 8.0 database
+#   - redis:    Redis cache and queue
+#   - mailpit:  Local email testing (UI at localhost:8025)
+#   - minio:    S3-compatible storage (UI at localhost:9001)
+
+name: gitpulse
+
+services:
+  # ==========================================================================
+  # Application
+  # ==========================================================================
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: gitpulse-app
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/var/www/html
+      - /var/www/html/vendor
+      - /var/www/html/node_modules
+    environment:
+      APP_ENV: local
+      APP_DEBUG: true
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: gitpulse
+      DB_USERNAME: gitpulse
+      DB_PASSWORD: secret
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      CACHE_STORE: redis
+      QUEUE_CONNECTION: redis
+      SESSION_DRIVER: redis
+      MAIL_MAILER: smtp
+      MAIL_HOST: mailpit
+      MAIL_PORT: 1025
+      AWS_ACCESS_KEY_ID: minioadmin
+      AWS_SECRET_ACCESS_KEY: minioadmin
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_BUCKET: gitpulse
+      AWS_ENDPOINT: http://minio:9000
+      AWS_USE_PATH_STYLE_ENDPOINT: true
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - gitpulse
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/up"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  # ==========================================================================
+  # Database
+  # ==========================================================================
+  mysql:
+    image: mysql:8.0
+    container_name: gitpulse-mysql
+    restart: unless-stopped
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: gitpulse
+      MYSQL_USER: gitpulse
+      MYSQL_PASSWORD: secret
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - gitpulse
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ==========================================================================
+  # Cache & Queue
+  # ==========================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: gitpulse-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - gitpulse
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ==========================================================================
+  # Email Testing
+  # ==========================================================================
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: gitpulse-mailpit
+    restart: unless-stopped
+    ports:
+      - "1025:1025"   # SMTP
+      - "8025:8025"   # Web UI
+    networks:
+      - gitpulse
+
+  # ==========================================================================
+  # S3-Compatible Storage
+  # ==========================================================================
+  minio:
+    image: minio/minio:latest
+    container_name: gitpulse-minio
+    restart: unless-stopped
+    ports:
+      - "9000:9000"   # API
+      - "9001:9001"   # Console
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio-data:/data
+    command: server /data --console-address ":9001"
+    networks:
+      - gitpulse
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ==========================================================================
+  # Queue Worker (optional, for dedicated worker)
+  # ==========================================================================
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: gitpulse-worker
+    restart: unless-stopped
+    command: php artisan queue:work --sleep=3 --tries=3
+    volumes:
+      - .:/var/www/html
+      - /var/www/html/vendor
+    environment:
+      APP_ENV: local
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: gitpulse
+      DB_USERNAME: gitpulse
+      DB_PASSWORD: secret
+      REDIS_HOST: redis
+      QUEUE_CONNECTION: redis
+    depends_on:
+      - app
+      - mysql
+      - redis
+    networks:
+      - gitpulse
+    profiles:
+      - worker
+
+  # ==========================================================================
+  # Scheduler (optional, for dedicated scheduler)
+  # ==========================================================================
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: gitpulse-scheduler
+    restart: unless-stopped
+    command: >
+      sh -c "while true; do php artisan schedule:run --no-interaction; sleep 60; done"
+    volumes:
+      - .:/var/www/html
+      - /var/www/html/vendor
+    environment:
+      APP_ENV: local
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_DATABASE: gitpulse
+      DB_USERNAME: gitpulse
+      DB_PASSWORD: secret
+      REDIS_HOST: redis
+    depends_on:
+      - app
+      - mysql
+      - redis
+    networks:
+      - gitpulse
+    profiles:
+      - scheduler
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  gitpulse:
+    driver: bridge
+
+# =============================================================================
+# Volumes
+# =============================================================================
+volumes:
+  mysql-data:
+  redis-data:
+  minio-data:

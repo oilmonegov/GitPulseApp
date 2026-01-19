@@ -1,0 +1,99 @@
+name: Load Testing
+
+on:
+  # Manual trigger with environment selection
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      test_type:
+        description: 'Type of load test to run'
+        required: true
+        default: 'smoke'
+        type: choice
+        options:
+          - smoke
+          - load
+          - stress
+
+  # Scheduled smoke tests (weekly on staging)
+  schedule:
+    - cron: '0 6 * * 1' # Every Monday at 6 AM UTC
+
+env:
+  K6_VERSION: '0.49.0'
+
+jobs:
+  load-test:
+    name: Run ${{ github.event.inputs.test_type || 'smoke' }} test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set Environment URL
+        id: env
+        run: |
+          ENV="${{ github.event.inputs.environment || 'staging' }}"
+          case $ENV in
+            staging)
+              echo "base_url=${{ secrets.STAGING_URL }}" >> $GITHUB_OUTPUT
+              ;;
+            production)
+              echo "base_url=${{ secrets.PRODUCTION_URL }}" >> $GITHUB_OUTPUT
+              ;;
+          esac
+
+      - name: Install k6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install k6
+
+      - name: Create Results Directory
+        run: mkdir -p tests/Load/results
+
+      - name: Run Load Test
+        run: |
+          TEST_TYPE="${{ github.event.inputs.test_type || 'smoke' }}"
+          BASE_URL="${{ steps.env.outputs.base_url }}"
+
+          if [ -z "$BASE_URL" ]; then
+            echo "No BASE_URL configured for environment. Using localhost for validation."
+            BASE_URL="http://localhost:8000"
+          fi
+
+          echo "Running $TEST_TYPE test against $BASE_URL"
+          k6 run --env BASE_URL=$BASE_URL tests/Load/${TEST_TYPE}.js
+
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: load-test-results-${{ github.event.inputs.test_type || 'smoke' }}
+          path: tests/Load/results/
+          retention-days: 30
+
+      - name: Post Results Summary
+        if: always()
+        run: |
+          TEST_TYPE="${{ github.event.inputs.test_type || 'smoke' }}"
+          echo "## Load Test Results: $TEST_TYPE" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ -f "tests/Load/results/${TEST_TYPE}-summary.json" ]; then
+            echo '```json' >> $GITHUB_STEP_SUMMARY
+            cat "tests/Load/results/${TEST_TYPE}-summary.json" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Results file not found. Check k6 output for details." >> $GITHUB_STEP_SUMMARY
+          fi

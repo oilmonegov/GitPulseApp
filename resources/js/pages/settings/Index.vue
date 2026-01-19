@@ -149,7 +149,7 @@ const settingCards = computed<SettingCardData[]>(() => [
     <AppLayout :breadcrumbs="breadcrumbs">
         <Head title="Settings" />
 
-        <div class="min-h-full px-4 py-8 lg:px-6">
+        <div class="px-4 py-8 lg:px-6">
             <!-- Editorial header with decorative elements -->
             <header class="relative mb-12">
                 <!-- Decorative background pattern -->
