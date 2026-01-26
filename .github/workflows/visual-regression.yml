@@ -75,7 +75,7 @@ jobs:
           APP_URL: http://127.0.0.1:8000
 
       - name: Upload Screenshots on Failure
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: failure()
         with:
           name: visual-regression-screenshots
