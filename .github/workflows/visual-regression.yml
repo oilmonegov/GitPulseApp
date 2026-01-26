@@ -85,7 +85,7 @@ jobs:
           retention-days: 7
 
       - name: Comment on PR with Results
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         if: failure()
         with:
           script: |
