@@ -16,6 +16,7 @@ This document outlines Laravel best practices tailored to the GitPulse codebase.
 10. [Security](#security)
 11. [Performance](#performance)
 12. [Error Handling](#error-handling)
+13. [Git Workflow](#git-workflow)
 
 ---
 
@@ -29,7 +30,7 @@ app/
 ├── Concerns/          # Shared traits for models/controllers
 ├── Contracts/         # Interfaces for dependency injection
 ├── DTOs/              # Data Transfer Objects
-├── Enums/             # PHP 8.1+ backed enums
+├── Constants/         # PHP 8.1+ backed enums
 ├── Events/            # Domain events
 ├── Exceptions/        # Custom exception classes
 ├── Http/
@@ -83,14 +84,11 @@ final class Commit extends Model
 {
     use HasFactory;
 
-    // 1. Table configuration
-    protected $table = 'commits';
-
-    // 2. Primary key configuration (if non-standard)
+    // 1. Primary key configuration (if non-standard)
     protected $keyType = 'string';
     public $incrementing = false;
 
-    // 3. Mass assignment protection
+    // 2. Mass assignment protection
     protected $fillable = [
         'sha',
         'message',
@@ -100,19 +98,22 @@ final class Commit extends Model
         'repository_id',
     ];
 
-    // 4. Attribute casting
-    protected $casts = [
-        'committed_at' => 'datetime',
-        'files_changed' => 'array',
-        'impact_score' => 'decimal:2',
-    ];
+    // 3. Attribute casting (use method, not property — Laravel 12 convention)
+    protected function casts(): array
+    {
+        return [
+            'committed_at' => 'datetime',
+            'files_changed' => 'array',
+            'impact_score' => 'decimal:2',
+        ];
+    }
 
-    // 5. Hidden attributes (for serialization)
+    // 4. Hidden attributes (for serialization)
     protected $hidden = [
         'raw_payload',
     ];
 
-    // 6. Boot method (if needed)
+    // 5. Boot method (if needed)
     protected static function booted(): void
     {
         static::creating(function (Commit $commit) {
@@ -120,7 +121,7 @@ final class Commit extends Model
         });
     }
 
-    // 7. Relationships (alphabetical)
+    // 6. Relationships (alphabetical)
     public function repository(): BelongsTo
     {
         return $this->belongsTo(Repository::class);
@@ -131,7 +132,7 @@ final class Commit extends Model
         return $this->belongsTo(User::class);
     }
 
-    // 8. Scopes
+    // 7. Scopes
     public function scopeForRepository(Builder $query, int $repositoryId): Builder
     {
         return $query->where('repository_id', $repositoryId);
@@ -142,19 +143,26 @@ final class Commit extends Model
         return $query->whereBetween('committed_at', [$start, $end]);
     }
 
-    // 9. Accessors & Mutators
+    // 8. Accessors & Mutators
     protected function shortSha(): Attribute
     {
         return Attribute::get(fn () => substr($this->sha, 0, 7));
     }
 
-    // 10. Custom methods
+    // 9. Custom methods
     public function isHighImpact(): bool
     {
         return $this->impact_score >= 7.0;
     }
 }
 ```
+
+### Key Requirements
+
+- **All models must be `final`** — this is enforced by architecture tests. No model should be extended.
+- **Use the `casts()` method** instead of the `$casts` property (Laravel 12 convention).
+- **All PHP files must include `declare(strict_types=1)`** — enforced by architecture tests project-wide.
+- **Omit the `$table` property** when following Laravel's naming convention (model `Commit` → table `commits`).
 
 ### Best Practices
 
@@ -180,9 +188,10 @@ Repository::whereHas('commits', fn ($q) => $q->where('impact_score', '>', 5))->g
 
 **DON'T:**
 ```php
-// Don't use DB facade when Eloquent works
+// Don't use DB facade — use Model::query() or Eloquent methods
 DB::table('commits')->where('id', $id)->first(); // Bad
 Commit::find($id); // Good
+Commit::query()->where('sha', $sha)->first(); // Good — prefer Model::query() for complex queries
 
 // Don't query in loops (N+1 problem)
 foreach ($commits as $commit) {
@@ -202,7 +211,9 @@ $query->forRepository($id)->recent(); // Better
 ```php
 <?php
 
-namespace App\Enums;
+declare(strict_types=1);
+
+namespace App\Constants;
 
 enum CommitType: string
 {
@@ -231,9 +242,12 @@ enum CommitType: string
 
 ```php
 // In model
-protected $casts = [
-    'type' => CommitType::class,
-];
+protected function casts(): array
+{
+    return [
+        'type' => CommitType::class,
+    ];
+}
 ```
 
 ---
@@ -334,7 +348,9 @@ public function show(Repository $repository): Response
 
 ### When to Use Each
 
-**Services**: For complex business logic that may involve multiple operations or external integrations.
+This project **prefers Actions and Queries over Services** following the CQRS pattern. Most business logic should live in Action/Query classes. Services are a secondary pattern reserved for external integrations or orchestration that doesn't fit the Action/Query model.
+
+**Services**: For external integrations or complex orchestration involving multiple operations.
 
 ```php
 <?php
@@ -373,6 +389,43 @@ final class GitHubService
 }
 ```
 
+### CQRS Pattern (Actions & Queries)
+
+This project follows a simplified CQRS pattern enforced by architecture tests:
+
+- **Actions** (`app/Actions/`): Handle write operations. Must implement `App\Contracts\Action` and be `final`. Execute via `->execute()`.
+- **Queries** (`app/Queries/`): Handle read operations. Must implement `App\Contracts\Query` and be `final`. Execute via `->get()`. Never modify state.
+
+```php
+// Action example
+final class ConnectGitHubAction implements Action
+{
+    public function __construct(
+        private readonly User $user,
+        private readonly SocialiteUser $githubUser,
+    ) {}
+
+    public function execute(): bool
+    {
+        $this->user->update([...]);
+        return true;
+    }
+}
+
+// Query example
+final class FindUserByGitHubIdQuery implements Query
+{
+    public function __construct(
+        private readonly string $githubId,
+    ) {}
+
+    public function get(): ?User
+    {
+        return User::where('github_id', $this->githubId)->first();
+    }
+}
+```
+
 **Actions**: For single-purpose, reusable operations. Following the "Single Action Classes" pattern.
 
 ```php
@@ -383,10 +436,10 @@ declare(strict_types=1);
 namespace App\Actions;
 
 use App\DTOs\CommitData;
-use App\Enums\CommitType;
+use App\Constants\CommitType;
 use App\Models\Commit;
 
-final class CalculateImpactScore
+final class CalculateImpactScore implements Action
 {
     private const WEIGHTS = [
         'lines_changed' => 0.20,
@@ -520,6 +573,8 @@ $request->safe()->except(['password']);
 ```php
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -571,6 +626,14 @@ return new class extends Migration
     }
 };
 ```
+
+### SQLite & MySQL Compatibility
+
+This project uses SQLite for development/testing and MySQL for production. All database code must work on both:
+
+- **Never use `enum()` column type** in migrations — use `string()` with a sensible length instead (e.g., `string('status', 20)`).
+- **Use the `DatabaseCompatible` trait** (`App\Concerns\DatabaseCompatible`) for queries requiring database-specific functions like `YEAR()`, `MONTH()`, `NOW()`, `DATE_FORMAT()`, or `GROUP_CONCAT()`. The trait provides cross-DB methods: `yearFromDate()`, `monthFromDate()`, `dateFormat()`, `currentTimestamp()`, `concat()`, `groupConcat()`, etc.
+- **Avoid raw SQL** with database-specific functions. Use Laravel's query builder which handles most cross-DB compatibility automatically.
 
 ### Database Best Practices
 
@@ -784,7 +847,7 @@ tests/
 
 use App\Actions\CalculateImpactScore;
 use App\DTOs\CommitData;
-use App\Enums\CommitType;
+use App\Constants\CommitType;
 
 describe('CalculateImpactScore', function () {
     it('scores feature commits higher than chores', function () {
@@ -833,6 +896,50 @@ describe('CommitController', function () {
             ->get(route('commits.index', $otherRepo))
             ->assertForbidden();
     });
+});
+```
+
+### Wayfinder in Tests
+
+Use Wayfinder-generated route functions for type-safe route references in frontend tests instead of hardcoded route names:
+
+```typescript
+// Good: Type-safe Wayfinder imports
+import { index, show } from '@/actions/App/Http/Controllers/CommitController';
+
+// Use in test assertions or navigation
+expect(index.url()).toBe('/commits');
+expect(show.url(1)).toBe('/commits/1');
+```
+
+### Inertia v2 Testing Patterns
+
+When testing Inertia v2 features, cover deferred props, polling, prefetching, and `WhenVisible` components:
+
+```php
+<?php
+
+declare(strict_types=1);
+
+// Test deferred props load correctly
+it('loads deferred stats after initial render', function () {
+    $this->actingAs($this->user)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('Dashboard')
+            ->has('stats') // deferred prop key exists
+        );
+});
+
+// Test that WhenVisible components have the expected data available
+it('provides data for lazy-loaded sections', function () {
+    $this->actingAs($this->user)
+        ->get(route('repositories.show', $this->repository))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('recentCommits')
+        );
 });
 ```
 
@@ -906,10 +1013,13 @@ Route::get('/repositories/{repository}', [RepositoryController::class, 'show'])
 
 ```php
 // Use encrypted casts for sensitive data
-protected $casts = [
-    'github_token' => 'encrypted',
-    'webhook_secret' => 'encrypted',
-];
+protected function casts(): array
+{
+    return [
+        'github_token' => 'encrypted',
+        'webhook_secret' => 'encrypted',
+    ];
+}
 
 // Never log sensitive data
 Log::info('User authenticated', [
@@ -1061,18 +1171,23 @@ Log::channel('webhooks')->info('Webhook received', [
 
 ### Code Style Commands
 
+**Required**: Run `vendor/bin/pint --dirty` before finalizing any changes to ensure code matches the project's expected style.
+
 ```bash
-# Format code
-./vendor/bin/pint
+# Format only changed files (preferred — run before every commit)
+vendor/bin/pint --dirty
+
+# Format all files
+vendor/bin/pint
 
 # Check without fixing
-./vendor/bin/pint --test
+vendor/bin/pint --test
 
 # Run static analysis
-./vendor/bin/phpstan analyse
+vendor/bin/phpstan analyse
 
 # Preview automated refactoring
-./vendor/bin/rector process --dry-run
+vendor/bin/rector process --dry-run
 ```
 
 ### Common Artisan Commands
@@ -1101,6 +1216,40 @@ php artisan view:cache
 php artisan queue:work --queue=webhooks,default
 php artisan horizon
 ```
+
+---
+
+## Git Workflow
+
+### Conventional Commits
+
+All commits must follow the format: `type(scope): description`
+
+Valid types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`
+
+This is enforced by the `commit-msg` hook. Examples:
+
+```
+feat(auth): add GitHub OAuth login flow
+fix(metrics): correct impact score calculation for merge commits
+refactor(queries): extract repository stats into dedicated Query class
+```
+
+### Lessons Learned
+
+The project maintains themed lesson files in `docs/lessons/` to capture architectural decisions and learnings. This is enforced by the pre-push hook for significant commits (`feat`, `fix`, `refactor`, `perf`).
+
+**Check lessons before making architectural decisions.** Update the relevant file after completing significant work:
+
+| Work Type | File |
+|-----------|------|
+| CQRS, Actions, Queries, DTOs | `docs/lessons/architecture.md` |
+| Database, migrations, Eloquent | `docs/lessons/database.md` |
+| Vue, Inertia, CSS, UI | `docs/lessons/frontend.md` |
+| Tests, Pest, mutations | `docs/lessons/testing.md` |
+| CI/CD, Docker, monitoring | `docs/lessons/infrastructure.md` |
+| OAuth, APIs, webhooks | `docs/lessons/integrations.md` |
+| Git hooks, commits, workflow | `docs/lessons/git-workflow.md` |
 
 ---
 
