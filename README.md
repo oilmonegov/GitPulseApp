@@ -1,4 +1,4 @@
-# GitPulse
+# GitPulseApp
 
 Developer Productivity Analytics Platform - Transform Git commit activity into actionable productivity insights.
 
